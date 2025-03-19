@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADL Survey</title>
+  <script src="src/components/LikertScale.js"></script>
+  <script src="src/components/AdlSurvey.js"></script>
+</head>
+<body>
+  <h1>ADL Survey</h1>
+  
+  <adl-survey theme="modal" questions-per-page="1">
+      <header> 
+        <h2>Tu opinión es muy importante</h2>
+        <button class="close"></button>
+      </header>
+      <main class="questions-container">
+        <likert-scale
+          question-id="1"
+          question="¿Qué tan satisfecho está con el servicio?" 
+          min="1" 
+          max="7"
+          low-score-label="Muy insatisfecho"
+          high-score-label="Muy satisfecho"
+          required
+          ></likert-scale>
+        <likert-scale 
+          question-id="2"
+          question="¿Qué tan fácil fue usar la aplicación?" 
+          min="1" 
+          max="5"
+          low-score-label="Muy difícil"
+          high-score-label="Muy fácil"
+          ></likert-scale>
+        <div class="thanks hidden">
+          <p>¡Gracias por completar la encuesta!</p>
+          <p>Tu opinión es muy importante para nosotros.</p>
+        </div>
+      </main>
+      <footer>
+        <div class="navigation-controls">
+          <button class="btn btn-primary btn-next" type="button" disabled>Siguiente</button>
+        </div>
+        <div class="pagination">
+          <span class="pagination-info"></span>
+        </div>
+      </footer>
+  </adl-survey>
+
+  <script src="js/config.survey.js"></script>
+</body>
+</html>
