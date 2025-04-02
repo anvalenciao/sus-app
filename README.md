@@ -16,4 +16,13 @@ GitFlow se basa en cinco tipos de ramas principales:
 
 ## Setup enviroment develpment
 
+Instalar dependenicas
+```
+npm install
+```
+Ejecutrar storybook
+```
+npm run storybook
+```
+
 
