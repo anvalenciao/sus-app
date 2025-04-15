@@ -34,7 +34,9 @@ class AdlSurvey extends HTMLElement {
     this.boundHandleSurveyQuestion = this.handleSurveyQuestion.bind(this);
     this.boundDomReadyCallback = this._domReadyCallback.bind(this);
     this.boundCloseSurvey = this.closeSurvey.bind(this);
+    this.boundTogglePopupCollapse = this.togglePopupCollapse.bind(this);
     this.boundGoToNextPage = this.goToNextPage.bind(this); // Or use arrow fn property
+    this.boundActionButtonHandler = null; // Placeholder for the correct handler
 
     this._colors = this._getDefaultColors(); // Initialize with defaults
     this._zIndex = 9999; // Default z-index
@@ -92,7 +94,7 @@ class AdlSurvey extends HTMLElement {
       :host .btn-primary:hover{opacity: 0.77;}
       :host .btn-primary[disabled]{pointer-events:none;opacity:.33;}
 
-      :host header{padding:1.5em 1.5em 0 1.5em;display:flex;flex-shrink:0;align-items:center;justify-content:space-between;}
+      :host header{padding:1rem;display:flex;flex-shrink:0;align-items:center;justify-content:space-between;}
       :host footer{align-items:center;border-top:1px solid rgba(224, 226, 232, 0.6);display:flex;flex-direction:row-reverse;gap:12px;justify-content:space-between;padding:0.75em;width:100%;}
 
       :host .close{position:absolute;top:0;right:0;display:block;width:32px;height:32px;font-size:0;transition:transform 150ms;margin:1rem;border:0;padding:0;background:0 0}
@@ -116,8 +118,78 @@ class AdlSurvey extends HTMLElement {
       :host([theme="modal"]) main{min-height:110px;padding:0 1em;} /* Ensure main has padding */
       :host([theme="modal"]) .thanks{font-size:1.375em;font-weight:600;text-align:center;padding:2em 1em;}
 
+      /* --- Button Visibility --- */
+      /* Hide the non-applicable action button based on theme */
+      /*:host([theme="popup"]) button[action="close"],
+      :host(:not([theme="popup"])) button[action="collapse"] {
+        display: none;
+      }*/
+
+      /* --- Button Visibility --- */
+      /* Hide the non-applicable action button based on theme */
+      /*:host([theme="popup"]) button[action="close"],
+      :host(:not([theme="popup"])) button[action="collapse"] {
+        display: none;
+      }*/
+
+      /* --- Button Styling --- */
+      /* Base styles for BOTH default buttons (and potentially user-provided ones if they add the classes) */
+      button[action="close"], button[action="collapse"], button[action="close"], button[action="collapse"] {
+        /* Shared styles */
+        position: absolute; top: 0; right: 0; display: block;
+        width: 32px; height: 32px; font-size: 0;
+        transition: transform 150ms, opacity 0.15s ease-in-out;
+        margin: 0.5rem; border: 0; padding: 0; background: 0 0;
+        cursor: pointer; opacity: 0.5;
+        box-sizing: border-box;
+      }
+      /* Adjust margin for popup's collapse button */
+      :host([theme="popup"]) button[action="collapse"] {
+          margin: 0.5rem;
+      }
+      /* Adjust margin for non-popup's close button */
+       /*:host(:not([theme="popup"])) button[action="close"] {
+           margin: 1rem;
+       }*/
+
+      /* Hover effect */
+      button[action="close"]:hover, button[action="collapse"]:hover {
+        opacity: 1;
+      }
+
+      /* Default "X" Icon styling (applied if button has button[action="close"] class) */
+      button[action="close"]:after,
+      button[action="close"]:before {
+        position: absolute; top: 50%; left: 50%; width: 2px; height: 18px;
+        content: ''; background: var(--adl-survey-color, #000);
+      }
+      button[action="close"]:before { transform: rotate(45deg) translate(-50%, -50%); transform-origin: top left; }
+      button[action="close"]:after { transform: rotate(-45deg) translate(-50%, -50%); transform-origin: top left; }
+      button[action="close"]:hover { transform: rotateZ(90deg); }
+
+      /* Default "Down Arrow" Icon styling (applied if button has button[action="collapse"] class) */
+      button[action="collapse"] { transition: transform 0.3s ease-in-out, opacity 0.15s ease-in-out; }
+      button[action="collapse"]:before {
+         position: absolute; top: 50%; left: 50%; content: ''; width: 10px; height: 2px;
+         background: var(--adl-survey-color, #000); transform: translate(-70%, -50%) rotate(-45deg); transform-origin: center;
+      }
+      button[action="collapse"]:after {
+         position: absolute; top: 50%; left: 50%; content: ''; width: 10px; height: 2px;
+         background: var(--adl-survey-color, #000); transform: translate(-30%, -50%) rotate(45deg); transform-origin: center;
+      }
+      /* Rotate arrow UP when survey is collapsed (Target host attribute and button) */
+      :host([collapsed]) button[action="collapse"] {
+        transform: rotate(180deg);
+      }
+      /* Or using part on the default button */
+      /* button::part(button) { ... } */
+      /* button::part(close-button) { ... } */
+      /* button::part(collapse-button) { ... } */
 
       /* --- Popup Theme --- */
+      :host([collapsed]) main,
+      :host([collapsed]) footer { display: none; }
+
       /* "Down Arrow" Icon for Popup Theme */
       :host([theme="popup"]) .close {
         margin: 0.5rem; /* Keep smaller margin for popup */
@@ -202,21 +274,11 @@ class AdlSurvey extends HTMLElement {
         /* Add transition for smooth height change (optional) */
         /* transition: max-height 0.3s ease-in-out; */ /* Can be tricky with dynamic content */
       }
-      /* Hide main and footer when collapsed */
-      :host([theme="popup"][collapsed]) main,
-      :host([theme="popup"][collapsed]) footer {
-        display: none;
-      }
-
-      /* Optional: Adjust header padding/style when collapsed */
-      :host([theme="popup"][collapsed]) header {
-         /* e.g., remove bottom padding if any */
-         /* padding-bottom: 0; */
-      }
+      
 
 
        /* Optional: Adjust padding/margins inside popup */
-      :host([theme="popup"]) header { padding: 1em 1em 0 1em; }
+      /*:host([theme="popup"]) header { padding: 1em 1em 0 1em; }*/
       :host([theme="popup"]) main { padding: 0 1em; min-height: 80px; /* Adjust as needed */ }
       :host([theme="popup"]) footer { padding: 0.75em 1em; }
       :host([theme="popup"]) .close { margin: 0.5rem; /* Smaller margin for close */ }
@@ -259,7 +321,7 @@ class AdlSurvey extends HTMLElement {
     this._updateCollapsedAttribute(); // Sync attribute initially
 
     // Attempt initial render if conditions are met
-    //this.tryInitialRender();
+    this.tryInitialRender();
   }
 
   disconnectedCallback() {
@@ -279,6 +341,14 @@ class AdlSurvey extends HTMLElement {
       let needsColorUpdate = false; // Renaming applyColors -> applyStyles might be good
       let needsRender = false;
       let needsAttributeParse = false;
+
+      // ... existing logic ...
+      if (name === 'theme') {
+        // Update button visibility if theme changes after initial render
+        if (this.shadowRoot.childElementCount > 0 && this.originalHTML !== null) {
+          this._updateButtonVisibility();
+        }
+      }
 
       if (name.startsWith('color-')) {
         this._parseColorAttributes();
@@ -479,6 +549,35 @@ class AdlSurvey extends HTMLElement {
     const footer = doc.querySelector('footer');
     let questionsContainer; // Define here for broader scope
 
+
+    // --- Determine Theme and Handler ---
+    const theme = this.getAttribute('theme');
+    const isPopup = theme === 'popup';
+    this.boundActionButtonHandler = isPopup ? this.boundTogglePopupCollapse : this.boundCloseSurvey;
+    console.log(`AdlSurvey render: Theme=${theme}, Handler=${isPopup ? 'Toggle' : 'Close'}`);
+
+    // --- Determine Default Button HTML ---
+    let defaultButtonHTML = '';
+    let defaultButtonClass = 'close'; // Base class for styling via CSS
+    let defaultButtonAriaLabel = '';
+    let defaultButtonPart = 'button'; // Base part name
+
+    if (isPopup) {
+      defaultButtonClass += ' collapse-button-default'; // Specific class for arrow styling
+      defaultButtonAriaLabel = 'Toggle Survey';
+      defaultButtonPart += ' collapse-button'; // Specific part name
+    } else {
+      defaultButtonClass += ' close-button-default'; // Specific class for X styling
+      defaultButtonAriaLabel = 'Close Survey';
+      defaultButtonPart += ' close-button'; // Specific part name
+    }
+    // Construct the default button HTML string
+    defaultButtonHTML = `<button class="${defaultButtonClass}" part="${defaultButtonPart}" aria-label="${defaultButtonAriaLabel}"></button>`;
+
+
+    // --- Build Header ---
+    let headerToAppend;
+
     if (header) {
       container.appendChild(header.cloneNode(true));
     } else {
@@ -548,25 +647,8 @@ class AdlSurvey extends HTMLElement {
     });
     console.log(`AdlSurvey render: Cloned ${this.questions.length} questions.`);
 
-    // --- Add Shadow DOM Event Listeners ---
-    const closeBtn = this.shadowRoot.querySelector('.close');
-    // *** Modify Close Button Listener ***
-    if (closeBtn) {
-        // Remove previous listener to be safe if render is called multiple times
-        closeBtn.removeEventListener('click', this.boundCloseSurvey); // Assuming boundCloseSurvey handles normal close
-        closeBtn.removeEventListener('click', this.boundTogglePopupCollapse); // Remove potential toggle listener
-
-        if (this.getAttribute('theme') === 'popup') {
-            // Use a specific handler for popup toggle
-            this.boundTogglePopupCollapse = this.togglePopupCollapse.bind(this); // Bind toggle method
-            closeBtn.addEventListener('click', this.boundTogglePopupCollapse);
-            console.log("AdlSurvey render: Attached TOGGLE listener to popup close button.");
-        } else {
-            // Use the standard close handler for other themes
-            closeBtn.addEventListener('click', this.boundCloseSurvey);
-            console.log("AdlSurvey render: Attached CLOSE listener to non-popup close button.");
-        }
-    }
+    // --- Add Event Listeners to Action Buttons ---
+    this._attachActionListeners(); // Call helper to attach listeners
 
     const nextBtn = this.shadowRoot.querySelector('.btn-next');
     nextBtn?.addEventListener('click', this.boundGoToNextPage);
@@ -576,27 +658,106 @@ class AdlSurvey extends HTMLElement {
     // --- Initialize Visibility & State ---
     this.updateQuestionVisibility();
     this.updatePaginationInfo();
-    this.updateNextButtonState(); // Initial check
+    this.updateNextButtonState();
+    //this._updateButtonVisibility(); // Add function to show/hide correct button
 
     console.log("AdlSurvey render: Render process complete.");
   }
 
-  togglePopupCollapse() {
+  // --- Helper to Attach Listeners based on 'action' attribute ---
+  _attachActionListeners() {
+    // Remove previous listeners first to prevent duplicates if render is called again
+    // This requires storing references or querying differently. Let's query each time.
+    const closeBtn = this.shadowRoot.querySelector('button[action="close"]');
+    const collapseBtn = this.shadowRoot.querySelector('button[action="collapse"]');
+
+    // It's safer to remove listeners using the *exact same* bound function reference
+    if (closeBtn && this.boundCloseSurvey) {
+      closeBtn.removeEventListener('click', this.boundCloseSurvey); // Remove previous
+      closeBtn.addEventListener('click', this.boundCloseSurvey); // Add current
+      console.log("AdlSurvey _attachActionListeners: Attached closeSurvey to", closeBtn);
+    } else {
+      console.log("AdlSurvey _attachActionListeners: Close button not found or handler missing.");
+    }
+
+    if (collapseBtn && this.boundTogglePopupCollapse) {
+      collapseBtn.removeEventListener('click', this.boundTogglePopupCollapse); // Remove previous
+      collapseBtn.addEventListener('click', this.boundTogglePopupCollapse); // Add current
+      console.log("AdlSurvey _attachActionListeners: Attached togglePopupCollapse to", collapseBtn);
+    } else {
+      console.log("AdlSurvey _attachActionListeners: Collapse button not found or handler missing.");
+    }
+  }
+
+  // _attachListenerToSlot remains largely the same, just takes the handler dynamically
+  _attachListenerToSlot(slotElement, handler) {
+    if (!slotElement || !handler) { // Check handler exists
+      console.log(`Skipping listener for slot "${slotElement?.name}", no handler provided.`);
+      return;
+    }
+
+    const previousElement = slotElement._assignedButton;
+    if (previousElement) {
+      // Attempt to remove the previously attached handler
+      // This requires knowing which handler was attached before, which is tricky.
+      // A simpler robust approach is often to attach to a container and check event.target,
+      // but let's try managing it on the slot for now.
+      if (slotElement._assignedHandler) { // Store the handler used
+        previousElement.removeEventListener('click', slotElement._assignedHandler);
+      }
+    }
+
+    const assignedNodes = slotElement.assignedNodes({ flatten: true });
+    let buttonElement = assignedNodes.find(node => node.nodeType === Node.ELEMENT_NODE && node.matches('button'));
+
+    if (!buttonElement) {
+      buttonElement = slotElement.querySelector('button');
+    }
+
+    if (buttonElement) {
+      console.log(`Attaching handler (${handler.name}) to button in slot "${slotElement.name}":`, buttonElement);
+      buttonElement.addEventListener('click', handler);
+      slotElement._assignedButton = buttonElement;
+      slotElement._assignedHandler = handler; // Store the handler we just attached
+    } else {
+      console.log(`No button found for slot "${slotElement.name}"`);
+      slotElement._assignedButton = null;
+      slotElement._assignedHandler = null;
+    }
+  }
+
+  // --- Helper to Show/Hide Correct Button based on Theme ---
+  _updateButtonVisibility() {
+    const closeBtn = this.shadowRoot.querySelector('button[action="close"]');
+    const collapseBtn = this.shadowRoot.querySelector('button[action="collapse"]');
+    if (!closeBtn || !collapseBtn) return;
+
+    const isPopup = this.getAttribute('theme') === 'popup';
+
+    // Hide the button that is NOT relevant for the current theme
+    closeBtn.hidden = isPopup;
+    collapseBtn.hidden = !isPopup;
+
+    console.log(`_updateButtonVisibility: Popup=${isPopup}, Close Hidden=${closeBtn.hidden}, Collapse Hidden=${collapseBtn.hidden}`);
+  }
+
+  /*togglePopupCollapse() {
     this.isPopupCollapsed = !this.isPopupCollapsed;
     console.log(`AdlSurvey togglePopupCollapse: Setting collapsed state to ${this.isPopupCollapsed}`);
     this._updateCollapsedAttribute();
-}
+  }*/
 
-// --- Helper to Sync Attribute ---
-_updateCollapsedAttribute() {
+  // --- Helper to Sync Attribute ---
+  _updateCollapsedAttribute() {
+    console.log(this.isPopupCollapsed);
     if (this.isPopupCollapsed) {
-        this.setAttribute('collapsed', ''); // Set boolean attribute
+      this.setAttribute('collapsed', ''); // Set boolean attribute
     } else {
-        this.removeAttribute('collapsed');
+      this.removeAttribute('collapsed');
     }
     // Optional: Dispatch an event when state changes
     // this.dispatchEvent(new CustomEvent('adl-survey:toggled', { detail: { collapsed: this.isPopupCollapsed } }));
-}
+  }
 
 
   // --- Event Handlers ---
@@ -809,24 +970,78 @@ _updateCollapsedAttribute() {
     return Array.from(this.shadowRoot.querySelectorAll('likert-scale:not(.hidden)'));
   }
 
-  closeSurvey() {
-    console.log("AdlSurvey closeSurvey: Closing survey.");
-    // Dispatch event before removing/hiding
-    this.dispatchEvent(new CustomEvent('adl-survey:closed', {
-      detail: {
-        answers: this.answers,
-        completed: this.isSurveyCompleted
-      },
-      bubbles: true,
-      composed: true
-    }));
+  closeSurvey = () => {
+    console.log("AdlSurvey closeSurvey: Closing survey fully.");
 
-    if (this.getAttribute('theme') === 'modal') {
-      this.remove(); // Remove from DOM
+    // --- Dispatch Event ---
+    // Dispatch event BEFORE removing/hiding so listeners can react
+    try {
+      this.dispatchEvent(new CustomEvent('adl-survey:closed', {
+        detail: {
+          answers: { ...this.answers }, // Send a copy of answers
+          completed: this.isSurveyCompleted
+        },
+        bubbles: true, // Allow event to bubble up
+        composed: true // Allow event to cross shadow DOM boundary
+      }));
+      console.log("AdlSurvey closeSurvey: Dispatched 'adl-survey:closed' event.");
+    } catch (e) {
+      console.error("AdlSurvey closeSurvey: Error dispatching event:", e);
+    }
+
+
+    // --- Hide or Remove Element ---
+    const theme = this.getAttribute('theme');
+    if (theme === 'modal') {
+      console.log("AdlSurvey closeSurvey: Removing modal element.");
+      // Optional: Add fade-out animation before removing
+      // this.style.animation = 'fadeOut 0.3s ease-out forwards';
+      // setTimeout(() => this.remove(), 300);
+      this.remove(); // Remove element from DOM
     } else {
-      this.style.display = 'none'; // Hide inline
+      // For 'popup' or 'inline' themes, just hide
+      console.log(`AdlSurvey closeSurvey: Hiding element (theme: ${theme || 'inline'}).`);
+      this.style.display = 'none';
+    }
+
+    // --- Cleanup (Optional but Recommended) ---
+    // Although disconnectedCallback handles some cleanup,
+    // explicit cleanup here can be useful if the element isn't fully removed immediately.
+    // Remove document/global listeners if not already handled by disconnectedCallback firing
+    document.removeEventListener("survey:question", this.boundHandleSurveyQuestion);
+    document.removeEventListener("DOMContentLoaded", this.boundDomReadyCallback); // Should already be removed
+
+  }
+
+  togglePopupCollapse = () => {
+    // Only makes sense for popup theme
+    /*if (this.getAttribute('theme') !== 'popup') {
+      console.warn("AdlSurvey togglePopupCollapse: Called on non-popup theme. Ignoring.");
+      // Optionally, call full closeSurvey as fallback?
+      // this.closeSurvey();
+      return;
+    }*/
+
+    this.isPopupCollapsed = !this.isPopupCollapsed;
+    console.log(`AdlSurvey togglePopupCollapse: Setting collapsed state to ${this.isPopupCollapsed}`);
+
+    // Update the attribute which triggers CSS changes
+    this._updateCollapsedAttribute();
+
+    // Optional: Dispatch an event indicating the toggle
+    try {
+      this.dispatchEvent(new CustomEvent('adl-survey:toggled', {
+        detail: { collapsed: this.isPopupCollapsed },
+        bubbles: true,
+        composed: true
+      }));
+      console.log("AdlSurvey togglePopupCollapse: Dispatched 'adl-survey:toggled' event.");
+    } catch (e) {
+      console.error("AdlSurvey togglePopupCollapse: Error dispatching event:", e);
     }
   }
+
+
 }
 
 // Define custom elements (ensure LikertScale is defined before AdlSurvey if in separate files)

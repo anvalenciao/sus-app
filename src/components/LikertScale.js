@@ -7,8 +7,8 @@ class LikertScale extends HTMLElement {
 
       // Create styles once
       const styles = /* CSS */`
-      :host {display:block; margin: 1rem 0 !important;}
-      :host h3{font-weight:700;line-height:1.5em;font-size:1em;margin:0.5rem 0;overflow-wrap:break-word}
+      :host {display:block;}
+      :host h3{font-weight:700;line-height:1.5em;font-size:1em;margin:0 0 0.5rem 0;overflow-wrap:break-word}
       :host .scale{display:flex;flex-direction:column;}
       :host .options{align-items:center;display:flex;flex-direction:row;gap:5px;height:45px;justify-content:space-between}
       :host label{color:var(--adl-survey-color-text);display:inline-block;flex:1;font-size:15px;height:40px;margin:0;padding:8px 0;width:auto;}
