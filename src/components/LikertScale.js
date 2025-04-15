@@ -1,11 +1,12 @@
 class LikertScale extends HTMLElement {
   constructor() {
-    super();
-    this.attachShadow({ mode: 'open' });
-    this.selectedOption = null; // Store the selected option
+      super();
+      this.attachShadow({ mode: 'open' });
+      this.selectedOption = null; // Store the selected option
+      this.logicRules = []; // Store logic rules
 
-    // Create styles once
-    const styles = /* CSS */`
+      // Create styles once
+      const styles = /* CSS */`
       :host {display:block; margin: 1rem 0 !important;}
       :host h3{font-weight:700;line-height:1.5em;font-size:1em;margin:0.5rem 0;overflow-wrap:break-word}
       :host .scale{display:flex;flex-direction:column;}
@@ -14,7 +15,7 @@ class LikertScale extends HTMLElement {
       :host input:checked+label span{background-color:var(--adl-survey-button-background-color);color:var(--adl-survey-button-color);border:1px solid var(--adl-survey-button-background-color);}
       :host label span:hover{border:1px solid var(--adl-survey-button-background-color);box-shadow: 0 0 3px var(--adl-survey-button-background-color);}
       :host input{height:0;opacity:0;position:absolute;width:0;}
-      :host label span{background-color:var(--adl-survey-button-scale-background-color, #e4e);border:1px solid var(--adl-survey-button-scale-border-color);border-radius:12px;clear:none;color:inherit;cursor:pointer;display:block;float:left;font-size:inherit;list-style-image:none;list-style-type:none;padding:4px 0 5px 0;text-align:center;text-indent:0;width:100%;}
+      :host label span{background-color:var(--adl-survey-button-scale-background-color, #e4e);border:1px solid var(--adl-survey-button-scale-border-color);border-radius:12px;clear:none;color:inherit;cursor:pointer;display:block;float:left;font-size:inherit;list-style-image:none;list-style-type:none;padding:4px 0 5px 0;transition:background-color .15s ease-in-out, box-shadow .2s;text-align:center;text-indent:0;width:100%;}
       :host .labels{display:flex;justify-content:space-between;opacity:.7}
       :host .labels span{font-size:.875em}
       :host([required]) h3::after {content: " *";color: red;}
@@ -28,11 +29,16 @@ class LikertScale extends HTMLElement {
     if (event.type === "change") {
       this.selectedOption = event.target.value;
       
+      // Get next question ID based on logic rules
+      const nextQuestionId = this.getNextQuestionId();
+      console.log(nextQuestionId);
+      
       const messageEvent = new CustomEvent("survey:question", {
         detail: {
           value: event.target.value,
           required: this.isRequired(),
-          questionId: this.getAttribute('question-id')
+          questionId: this.getAttribute('question-id'),
+          nextQuestionId // Add the next question ID to the event
         },
         bubbles: true,
         composed: true
@@ -42,8 +48,18 @@ class LikertScale extends HTMLElement {
   }
 
   connectedCallback() {
+    // Parse logic rules from child elements
+    this.parseLogicRules();
     this.render();
     this.attachListeners();
+  }
+
+  disconnectedCallback() {
+    // Clean up any listeners when removed from the DOM
+    const radioButtons = this.shadowRoot.querySelectorAll('input[type="radio"]');
+    radioButtons.forEach(radioButton => {
+      radioButton.removeEventListener("change", this);
+    });
   }
 
   static get observedAttributes() {
@@ -63,6 +79,63 @@ class LikertScale extends HTMLElement {
         }
       }
     }
+  }
+
+  parseLogicRules() {
+    this.logicRules = [];
+    // Look for all child logic elements
+    const logicElements = this.querySelectorAll('logic');
+    
+    
+    logicElements.forEach(logic => {
+      const type = logic.getAttribute('type');
+      const target = logic.getAttribute('target');
+      const range = logic.getAttribute('range');
+      
+      if (type && target) {
+        const rule = {
+          type,
+          target
+        };
+        
+        // Parse range if it exists
+        if (range) {
+          const rangeParts = range.split('-');
+          if (rangeParts.length === 2) {
+            rule.rangeMin = parseInt(rangeParts[0], 10);
+            rule.rangeMax = parseInt(rangeParts[1], 10);
+          }
+        }
+        
+        this.logicRules.push(rule);
+      }
+    });
+    console.log(this.logicRules);
+    
+  }
+
+  // Method to get the next question based on current selection
+  getNextQuestionId() {
+    if (!this.selectedOption || this.logicRules.length === 0) {
+      return null; // No logic rules or no selection
+    }
+    
+    const selection = parseInt(this.selectedOption, 10);
+    
+    // Find matching rule based on the selection
+    for (const rule of this.logicRules) {
+      if (rule.type === 'conditional') {
+        // Check if selection is within range
+        if (rule.rangeMin <= selection && selection <= rule.rangeMax) {
+          return rule.target;
+        }
+      } else if (rule.type === 'next') {
+        // Simple next rule
+        return rule.target;
+      }
+    }
+    
+    return null; // No matching rule found
   }
 
   getMin() {

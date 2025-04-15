@@ -20,19 +20,30 @@
           question-id="1"
           question="¿Qué tan satisfecho está con el servicio?" 
           min="1" 
-          max="7"
+          max="5"
           low-score-label="Muy insatisfecho"
           high-score-label="Muy satisfecho"
-          required
-          ></likert-scale>
+          required>
+          <logic type="conditional" range="1-3" target="2"></logic>
+          <logic type="conditional" range="4-5" target="3"></logic>
+        </likert-scale>
         <likert-scale 
           question-id="2"
-          question="¿Qué tan fácil fue usar la aplicación?" 
+          question="¿Qué tan fácil fue usar la aplicación? 1" 
           min="1" 
           max="5"
           low-score-label="Muy difícil"
-          high-score-label="Muy fácil"
-          ></likert-scale>
+          high-score-label="Muy fácil">
+          <logic type="next" target="3"></logic>
+        </likert-scale>
+        <likert-scale 
+          question-id="3"
+          question="¿Qué tan fácil fue usar la aplicación? 2" 
+          min="1" 
+          max="5"
+          low-score-label="Muy difícil"
+          high-score-label="Muy fácil">
+        </likert-scale>
         <div class="thanks hidden">
           <p>¡Gracias por completar la encuesta!</p>
           <p>Tu opinión es muy importante para nosotros.</p>
@@ -47,6 +58,7 @@
         </div>
       </footer>
   </adl-survey>
+
 
   <script src="js/config.survey.js"></script>
 </body>
