@@ -39,6 +39,7 @@ class AdlSurvey extends HTMLElement {
     this._colors = this._getDefaultColors(); // Initialize with defaults
     this._zIndex = 9999; // Default z-index
     this._position = 'center'; // Default position
+    this.isPopupCollapsed = false; // Add state for popup collapse
 
     // --- Adopt Stylesheet ---
     this._adoptStyles();
@@ -114,9 +115,115 @@ class AdlSurvey extends HTMLElement {
       :host([theme="modal"]) .container{border-radius:8px;width:384px;animation:adl-survey-ani-position-scale-up .5s cubic-bezier(.165,.84,.44,1) forwards;margin:0 1em;}
       :host([theme="modal"]) main{min-height:110px;padding:0 1em;} /* Ensure main has padding */
       :host([theme="modal"]) .thanks{font-size:1.375em;font-weight:600;text-align:center;padding:2em 1em;}
+
+
+      /* --- Popup Theme --- */
+      /* "Down Arrow" Icon for Popup Theme */
+      :host([theme="popup"]) .close {
+        margin: 0.5rem; /* Keep smaller margin for popup */
+        /* Rotate the arrow when survey is collapsed */
+        transition: transform 0.3s ease-in-out, opacity 0.15s ease-in-out;
+      }
+      :host([theme="popup"]) .close:before {
+         position: absolute;
+         top: 50%; left: 50%;
+         content: '';
+         width: 10px; /* Arrow line width */
+         height: 2px; /* Arrow line thickness */
+         background: var(--adl-survey-color, #000);
+         transform: translate(-70%, -50%) rotate(-45deg); /* Position & angle left side */
+         transform-origin: center;
+      }
+      :host([theme="popup"]) .close:after {
+         position: absolute;
+         top: 50%; left: 50%;
+         content: '';
+         width: 10px; /* Arrow line width */
+         height: 2px; /* Arrow line thickness */
+         background: var(--adl-survey-color, #000);
+         transform: translate(-30%, -50%) rotate(45deg); /* Position & angle right side */
+         transform-origin: center;
+      }
+
+      /* Rotate arrow UP when survey is collapsed */
+      :host([theme="popup"][collapsed]) .close {
+        transform: rotate(180deg);
+      }
+
+      @keyframes adlsurvey-ani-position-slide-to-top {
+        0% { transform: translateY(100%); /* Start below viewport */ opacity: 0; }
+        100% { transform: translateY(0); /* End at desired position */ opacity: 1; }
+      }
+
+      :host([theme="popup"]) {
+        position: fixed;
+        z-index: var(--adl-survey-z-index, 999);
+        bottom: 0; /* Distance from bottom */
+        width: 320px; /* Default width, adjust as needed */
+        max-width: calc(100% - 2em); /* Ensure it fits on small screens */
+        /* Apply animation */
+        animation: adlsurvey-ani-position-slide-to-top 0.5s ease-out forwards;
+        /* Default positioning (e.g., bottom-right) */
+        right: 1em; /* Distance from right */
+        left: auto; /* Explicitly unset left */
+      }
+
+      /* Positioning overrides using the 'position' attribute */
+      :host([theme="popup"][position="left"]) {
+        left: 1em;
+        right: auto; /* Unset right */
+      }
+      :host([theme="popup"][position="center"]) {
+        left: 50%;
+        right: auto; /* Unset right */
+        transform: translateX(-50%); /* Center horizontally */
+        /* Adjust animation if transform is used */
+        animation-name: adlsurvey-ani-position-slide-to-top-center; /* Use different animation if needed */
+      }
+       /* Optional: Separate keyframes if transform conflicts */
+      @keyframes adlsurvey-ani-position-slide-to-top-center {
+        0% { transform: translateX(-50%) translateY(100%); opacity: 0; }
+        100% { transform: translateX(-50%) translateY(0); opacity: 1; }
+      }
+
+      /* Right is the default, no specific rule needed unless overriding something */
+      /* :host([theme="popup"][position="right"]) { ... } */
+
+      /* Container adjustments for popup */
+      :host([theme="popup"]) .container {
+        /* Override modal styles if necessary */
+        width: 100%; /* Container takes full width of host */
+        border-radius: 8px 8px 0 0; /* Keep rounded corners */
+        box-shadow: 0 2px 10px 0 rgba(0,0,0,.3); /* Popup shadow */
+        /* Ensure background is set */
+        background: var(--adl-survey-background-color, #fff);
+        /* Add overflow hidden to clip content when collapsing */
+        overflow: hidden;
+        /* Add transition for smooth height change (optional) */
+        /* transition: max-height 0.3s ease-in-out; */ /* Can be tricky with dynamic content */
+      }
+      /* Hide main and footer when collapsed */
+      :host([theme="popup"][collapsed]) main,
+      :host([theme="popup"][collapsed]) footer {
+        display: none;
+      }
+
+      /* Optional: Adjust header padding/style when collapsed */
+      :host([theme="popup"][collapsed]) header {
+         /* e.g., remove bottom padding if any */
+         /* padding-bottom: 0; */
+      }
+
+
+       /* Optional: Adjust padding/margins inside popup */
+      :host([theme="popup"]) header { padding: 1em 1em 0 1em; }
+      :host([theme="popup"]) main { padding: 0 1em; min-height: 80px; /* Adjust as needed */ }
+      :host([theme="popup"]) footer { padding: 0.75em 1em; }
+      :host([theme="popup"]) .close { margin: 0.5rem; /* Smaller margin for close */ }
       /* :host([theme="modal"]) .count{padding:0 1em;} */ /* .count class not used? */
 
       @keyframes adl-survey-ani-position-scale-up{0%{transform:scale(.65);opacity:0}100%{transform:scale(1);opacity:1}}
+      
 
       /* Animation for question transitions */
       @keyframes fadeIn {
@@ -146,6 +253,11 @@ class AdlSurvey extends HTMLElement {
     this._parseAttributes();
 
     this._parseColorAttributes(); // Parse initial attributes
+
+    // Check initial collapsed state from attribute?
+    this.isPopupCollapsed = this.hasAttribute('collapsed');
+    this._updateCollapsedAttribute(); // Sync attribute initially
+
     // Attempt initial render if conditions are met
     //this.tryInitialRender();
   }
@@ -162,48 +274,48 @@ class AdlSurvey extends HTMLElement {
 
   attributeChangedCallback(name, oldValue, newValue) {
     if (oldValue !== newValue) {
-        console.log(`AdlSurvey attributeChangedCallback: ${name} changed from ${oldValue} to ${newValue}`);
+      console.log(`AdlSurvey attributeChangedCallback: ${name} changed from ${oldValue} to ${newValue}`);
 
-        let needsColorUpdate = false; // Renaming applyColors -> applyStyles might be good
-        let needsRender = false;
-        let needsAttributeParse = false;
+      let needsColorUpdate = false; // Renaming applyColors -> applyStyles might be good
+      let needsRender = false;
+      let needsAttributeParse = false;
 
-        if (name.startsWith('color-')) {
-            this._parseColorAttributes();
-            needsColorUpdate = true;
-        } else if (name === 'z-index') {
-            needsAttributeParse = true;
-            needsColorUpdate = true; // z-index is applied in applyColors/applyStyles
-        } else if (name === 'position') { // <-- Handle position change
-            needsAttributeParse = true;
-            // Option A: Re-apply styles if position affects CSS variables (less likely)
-            // needsColorUpdate = true;
-            // Option B: Let CSS handle it via attribute selector (simpler if possible)
-            // No specific JS action needed here other than parsing if CSS handles it
-            console.log(`AdlSurvey attributeChangedCallback: Position changed to ${this._position}. CSS should handle visual update.`);
+      if (name.startsWith('color-')) {
+        this._parseColorAttributes();
+        needsColorUpdate = true;
+      } else if (name === 'z-index') {
+        needsAttributeParse = true;
+        needsColorUpdate = true; // z-index is applied in applyColors/applyStyles
+      } else if (name === 'position') { // <-- Handle position change
+        needsAttributeParse = true;
+        // Option A: Re-apply styles if position affects CSS variables (less likely)
+        // needsColorUpdate = true;
+        // Option B: Let CSS handle it via attribute selector (simpler if possible)
+        // No specific JS action needed here other than parsing if CSS handles it
+        console.log(`AdlSurvey attributeChangedCallback: Position changed to ${this._position}. CSS should handle visual update.`);
 
-        } else if (name === 'questions-per-page') {
-            needsAttributeParse = true;
-            needsRender = true;
+      } else if (name === 'questions-per-page') {
+        needsAttributeParse = true;
+        needsRender = true;
+      }
+
+      // Re-parse general attributes if needed
+      if (needsAttributeParse) {
+        this._parseAttributes(); // This updates this._position
+      }
+
+      // Apply updates ONLY if the component is already initialized and rendered
+      if (this.shadowRoot.childElementCount > 0 && this.originalHTML !== null) {
+        if (needsRender) {
+          console.log(`AdlSurvey attributeChangedCallback: Triggering re-render due to ${name} change.`);
+          this.render();
+        } else if (needsColorUpdate) {
+          console.log(`AdlSurvey attributeChangedCallback: Triggering applyStyles due to ${name} change.`);
+          this.applyStyles(); // Assuming renamed function
         }
-
-        // Re-parse general attributes if needed
-        if (needsAttributeParse) {
-            this._parseAttributes(); // This updates this._position
-        }
-
-        // Apply updates ONLY if the component is already initialized and rendered
-        if (this.shadowRoot.childElementCount > 0 && this.originalHTML !== null) {
-            if (needsRender) {
-                console.log(`AdlSurvey attributeChangedCallback: Triggering re-render due to ${name} change.`);
-                this.render();
-            } else if (needsColorUpdate) {
-                console.log(`AdlSurvey attributeChangedCallback: Triggering applyStyles due to ${name} change.`);
-                this.applyStyles(); // Assuming renamed function
-            }
-        } else {
-            console.log(`AdlSurvey attributeChangedCallback: Attribute ${name} changed, but component not fully rendered yet.`);
-        }
+      } else {
+        console.log(`AdlSurvey attributeChangedCallback: Attribute ${name} changed, but component not fully rendered yet.`);
+      }
     }
   }
 
@@ -282,11 +394,11 @@ class AdlSurvey extends HTMLElement {
     // --- Position ---
     const validPositions = ['left', 'center', 'right'];
     if (this.hasAttribute('position')) {
-        const posValue = this.getAttribute('position').toLowerCase();
-        // Use the value if valid, otherwise default to 'center'
-        this._position = validPositions.includes(posValue) ? posValue : 'center';
+      const posValue = this.getAttribute('position').toLowerCase();
+      // Use the value if valid, otherwise default to 'center'
+      this._position = validPositions.includes(posValue) ? posValue : 'center';
     } else {
-        this._position = 'center'; // Default if attribute not present
+      this._position = 'center'; // Default if attribute not present
     }
     console.log(`AdlSurvey _parseAttributes: position set to ${this._position}`);
 
@@ -438,7 +550,23 @@ class AdlSurvey extends HTMLElement {
 
     // --- Add Shadow DOM Event Listeners ---
     const closeBtn = this.shadowRoot.querySelector('.close');
-    closeBtn?.addEventListener('click', this.boundCloseSurvey);
+    // *** Modify Close Button Listener ***
+    if (closeBtn) {
+        // Remove previous listener to be safe if render is called multiple times
+        closeBtn.removeEventListener('click', this.boundCloseSurvey); // Assuming boundCloseSurvey handles normal close
+        closeBtn.removeEventListener('click', this.boundTogglePopupCollapse); // Remove potential toggle listener
+
+        if (this.getAttribute('theme') === 'popup') {
+            // Use a specific handler for popup toggle
+            this.boundTogglePopupCollapse = this.togglePopupCollapse.bind(this); // Bind toggle method
+            closeBtn.addEventListener('click', this.boundTogglePopupCollapse);
+            console.log("AdlSurvey render: Attached TOGGLE listener to popup close button.");
+        } else {
+            // Use the standard close handler for other themes
+            closeBtn.addEventListener('click', this.boundCloseSurvey);
+            console.log("AdlSurvey render: Attached CLOSE listener to non-popup close button.");
+        }
+    }
 
     const nextBtn = this.shadowRoot.querySelector('.btn-next');
     nextBtn?.addEventListener('click', this.boundGoToNextPage);
@@ -452,6 +580,23 @@ class AdlSurvey extends HTMLElement {
 
     console.log("AdlSurvey render: Render process complete.");
   }
+
+  togglePopupCollapse() {
+    this.isPopupCollapsed = !this.isPopupCollapsed;
+    console.log(`AdlSurvey togglePopupCollapse: Setting collapsed state to ${this.isPopupCollapsed}`);
+    this._updateCollapsedAttribute();
+}
+
+// --- Helper to Sync Attribute ---
+_updateCollapsedAttribute() {
+    if (this.isPopupCollapsed) {
+        this.setAttribute('collapsed', ''); // Set boolean attribute
+    } else {
+        this.removeAttribute('collapsed');
+    }
+    // Optional: Dispatch an event when state changes
+    // this.dispatchEvent(new CustomEvent('adl-survey:toggled', { detail: { collapsed: this.isPopupCollapsed } }));
+}
 
 
   // --- Event Handlers ---
