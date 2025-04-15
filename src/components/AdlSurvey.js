@@ -1,7 +1,13 @@
 class AdlSurvey extends HTMLElement {
-  // Define observed attributes
   static get observedAttributes() {
-    return ['theme', 'questions-per-page'];
+    return [
+      'theme', 'questions-per-page', // Existing
+      // Add ALL your color attributes EXACTLY as used in HTML
+      'color-text', 'color-background', 'color-button-text',
+      'color-button-background', 'color-scale-text',
+      'color-scale-background', 'color-scale-border',
+      'z-index', 'position'
+    ];
   }
 
   constructor() {
@@ -30,6 +36,10 @@ class AdlSurvey extends HTMLElement {
     this.boundCloseSurvey = this.closeSurvey.bind(this);
     this.boundGoToNextPage = this.goToNextPage.bind(this); // Or use arrow fn property
 
+    this._colors = this._getDefaultColors(); // Initialize with defaults
+    this._zIndex = 9999; // Default z-index
+    this._position = 'center'; // Default position
+
     // --- Adopt Stylesheet ---
     this._adoptStyles();
 
@@ -42,6 +52,18 @@ class AdlSurvey extends HTMLElement {
       document.addEventListener("DOMContentLoaded", this.boundDomReadyCallback);
     }
     console.log(`AdlSurvey Constructor: Initial ready state: ${this._isReadyToRender}`);
+  }
+
+  _getDefaultColors() {
+    return {
+      color: "#000",
+      backgroundColor: "#fff",
+      buttonColor: "#fff",
+      buttonBackgroundColor: "#626a84", // Default from original CSS
+      buttonScaleColor: "#000",
+      buttonScaleBackgroundColor: "#fff",
+      buttonScaleBorderColor: "#8c9394"
+    };
   }
 
   // --- Stylesheet Adoption ---
@@ -81,7 +103,15 @@ class AdlSurvey extends HTMLElement {
       :host .pagination-info{font-size:0.9em;color:#666;}
 
       :host([theme="modal"]) {z-index:var(--adl-survey-z-index, 999);position:fixed;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;}
-      :host([theme="modal"]) .container{border-radius:8px;width:384px;animation:adl-survey-ani-position-scale-up .5s cubic-bezier(.165,.84,.44,1) forwards;}
+      /* Override horizontal alignment based on position attribute */
+      :host([theme="modal"][position="left"]) {
+        justify-content: flex-start;
+      }
+
+      :host([theme="modal"][position="right"]) {
+        justify-content: flex-end;
+      }
+      :host([theme="modal"]) .container{border-radius:8px;width:384px;animation:adl-survey-ani-position-scale-up .5s cubic-bezier(.165,.84,.44,1) forwards;margin:0 1em;}
       :host([theme="modal"]) main{min-height:110px;padding:0 1em;} /* Ensure main has padding */
       :host([theme="modal"]) .thanks{font-size:1.375em;font-weight:600;text-align:center;padding:2em 1em;}
       /* :host([theme="modal"]) .count{padding:0 1em;} */ /* .count class not used? */
@@ -115,8 +145,9 @@ class AdlSurvey extends HTMLElement {
     // Parse attributes that might affect rendering
     this._parseAttributes();
 
+    this._parseColorAttributes(); // Parse initial attributes
     // Attempt initial render if conditions are met
-    this.tryInitialRender();
+    //this.tryInitialRender();
   }
 
   disconnectedCallback() {
@@ -130,16 +161,64 @@ class AdlSurvey extends HTMLElement {
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
-    console.log(`AdlSurvey attributeChangedCallback: ${name} changed from ${oldValue} to ${newValue}`);
     if (oldValue !== newValue) {
-      this._parseAttributes(); // Re-parse attributes
+        console.log(`AdlSurvey attributeChangedCallback: ${name} changed from ${oldValue} to ${newValue}`);
 
-      // Re-render if necessary (e.g., questionsPerPage changes visibility logic)
-      // Only re-render if already initialized to avoid errors
-      if (this.originalHTML !== null) { // Check if initialized
-         this.render(); // Re-render might be needed if questionsPerPage changes
-      }
+        let needsColorUpdate = false; // Renaming applyColors -> applyStyles might be good
+        let needsRender = false;
+        let needsAttributeParse = false;
+
+        if (name.startsWith('color-')) {
+            this._parseColorAttributes();
+            needsColorUpdate = true;
+        } else if (name === 'z-index') {
+            needsAttributeParse = true;
+            needsColorUpdate = true; // z-index is applied in applyColors/applyStyles
+        } else if (name === 'position') { // <-- Handle position change
+            needsAttributeParse = true;
+            // Option A: Re-apply styles if position affects CSS variables (less likely)
+            // needsColorUpdate = true;
+            // Option B: Let CSS handle it via attribute selector (simpler if possible)
+            // No specific JS action needed here other than parsing if CSS handles it
+            console.log(`AdlSurvey attributeChangedCallback: Position changed to ${this._position}. CSS should handle visual update.`);
+
+        } else if (name === 'questions-per-page') {
+            needsAttributeParse = true;
+            needsRender = true;
+        }
+
+        // Re-parse general attributes if needed
+        if (needsAttributeParse) {
+            this._parseAttributes(); // This updates this._position
+        }
+
+        // Apply updates ONLY if the component is already initialized and rendered
+        if (this.shadowRoot.childElementCount > 0 && this.originalHTML !== null) {
+            if (needsRender) {
+                console.log(`AdlSurvey attributeChangedCallback: Triggering re-render due to ${name} change.`);
+                this.render();
+            } else if (needsColorUpdate) {
+                console.log(`AdlSurvey attributeChangedCallback: Triggering applyStyles due to ${name} change.`);
+                this.applyStyles(); // Assuming renamed function
+            }
+        } else {
+            console.log(`AdlSurvey attributeChangedCallback: Attribute ${name} changed, but component not fully rendered yet.`);
+        }
     }
+  }
+
+  _parseColorAttributes() {
+    const newColors = { ...this._getDefaultColors() };
+    newColors.color = this.getAttribute('color-text') || newColors.color;
+    newColors.backgroundColor = this.getAttribute('color-background') || newColors.backgroundColor;
+    newColors.buttonColor = this.getAttribute('color-button-text') || newColors.buttonColor;
+    newColors.buttonBackgroundColor = this.getAttribute('color-button-background') || newColors.buttonBackgroundColor;
+    newColors.buttonScaleColor = this.getAttribute('color-scale-text') || newColors.buttonScaleColor;
+    newColors.buttonScaleBackgroundColor = this.getAttribute('color-scale-background') || newColors.buttonScaleBackgroundColor;
+    newColors.buttonScaleBorderColor = this.getAttribute('color-scale-border') || newColors.buttonScaleBorderColor;
+    this._colors = newColors;
+    console.log("AdlSurvey _parseColorAttributes: Updated colors:", this._colors);
+    console.log("AdlSurvey _parseColorAttributes: Parsed colors object:", JSON.stringify(this._colors));
   }
 
   // --- Initialization Logic ---
@@ -153,88 +232,112 @@ class AdlSurvey extends HTMLElement {
   }
 
   tryInitialRender() {
-    // Only render if connected AND the DOM is ready
     if (this._isConnected && this._isReadyToRender) {
-      // Prevent re-initialization if already done
+      // Prevent re-initialization
       if (this.originalHTML !== null) {
-          console.log("AdlSurvey tryInitialRender: Already initialized, skipping.");
-          return;
+        console.log("AdlSurvey tryInitialRender: Already initialized, skipping.");
+        return;
       }
 
       console.log("AdlSurvey tryInitialRender: Conditions met, performing initial render.");
+      this.originalHTML = this.innerHTML; // Capture HTML
 
-      // Capture innerHTML NOW - it should be ready
-      this.originalHTML = this.innerHTML;
-      if (!this.originalHTML) {
-          console.warn("AdlSurvey tryInitialRender: Captured innerHTML is empty!");
-          // Optionally provide default structure or error out
-      }
+      // Parse ALL attributes initially (including colors) BEFORE rendering
+      // This ensures _colors is populated before applyStyles runs
+      this._parseAttributes(); // Handles non-color like questions-per-page
+      this._parseColorAttributes(); // Parse initial color attributes
 
-      // Proceed with rendering
+      // Render the shadow DOM structure
       this.render();
 
-      // Apply config/colors if they were set before rendering
-      if (this._config) {
-          this.applyColors();
-      }
+      // Apply colors AFTER shadow DOM is built by render()
+      console.log("AdlSurvey tryInitialRender: Calling applyStyles after initial render.");
+      this.applyStyles(); // <<< THIS IS THE KEY INITIAL CALL
+
     } else {
       console.log(`AdlSurvey tryInitialRender: Conditions not met. Connected: ${this._isConnected}, Ready: ${this._isReadyToRender}`);
     }
   }
 
   _parseAttributes() {
-    // Parse questions-per-page attribute
+    // --- Questions Per Page ---
     if (this.hasAttribute('questions-per-page')) {
       const value = parseInt(this.getAttribute('questions-per-page'), 10);
-      // Use default of 1 if parsing fails or value is invalid
       this.questionsPerPage = (!isNaN(value) && value > 0) ? value : 1;
     } else {
-      this.questionsPerPage = 1; // Default if attribute not present
+      this.questionsPerPage = 1; // Default
     }
     console.log(`AdlSurvey _parseAttributes: questionsPerPage set to ${this.questionsPerPage}`);
-    // Note: 'theme' attribute is handled by CSS selector :host([theme="modal"])
-  }
 
-  // --- Public Configuration Method ---
-  configure(config) {
-    this._config = config;
-    // Apply config that might affect rendering immediately if possible,
-    // or wait for render if DOM isn't ready yet.
-    if (this.originalHTML !== null) { // Check if already initialized/rendered
-        this.applyColors();
-        // Potentially re-render if config affects structure/questions
-        // this.render();
-    }
-    return this;
-  }
-
-  applyColors() {
-    if (!this._config?.color) return;
-    console.log("AdlSurvey applyColors: Applying custom colors");
-
-    const colors = this._config.color;
-    // Create a new stylesheet for custom properties
-    const colorStyles = /* CSS */`
-      :host {
-        --adl-survey-z-index: ${this._config.zIndex || 9999}; /* Allow z-index config */
-        --adl-survey-color: ${colors.color || '#000'};
-        --adl-survey-background-color: ${colors.backgroundColor || '#fff'};
-        --adl-survey-button-color: ${colors.buttonColor || '#fff'};
-        --adl-survey-button-background-color: ${colors.buttonBackgroundColor || '#6225F0'};
-        --adl-survey-button-scale-color: ${colors.buttonScaleColor || '#000'};
-        --adl-survey-button-scale-background-color: ${colors.buttonScaleBackgroundColor || '#fff'};
-        --adl-survey-button-scale-border-color: ${colors.buttonScaleBorderColor || '#8c9394'};
-      }
-    `;
-    // Check if color styles already exist and replace, otherwise add
-    const existingSheet = this.shadowRoot.adoptedStyleSheets.find(sheet => sheet.cssRules.length > 0 && sheet.cssRules[0].cssText.includes('--adl-survey-color'));
-    if (existingSheet) {
-        existingSheet.replaceSync(colorStyles);
+    // --- Z-Index ---
+    if (this.hasAttribute('z-index')) {
+      const zValue = this.getAttribute('z-index');
+      // Basic check if it looks like a number, otherwise use default
+      this._zIndex = !isNaN(parseInt(zValue, 10)) ? zValue : 9999;
     } else {
-        const css = new CSSStyleSheet();
-        css.replaceSync(colorStyles);
-        this.shadowRoot.adoptedStyleSheets.push(css);
+      this._zIndex = 9999; // Default if attribute not present
     }
+    console.log(`AdlSurvey _parseAttributes: zIndex set to ${this._zIndex}`);
+
+    // --- Position ---
+    const validPositions = ['left', 'center', 'right'];
+    if (this.hasAttribute('position')) {
+        const posValue = this.getAttribute('position').toLowerCase();
+        // Use the value if valid, otherwise default to 'center'
+        this._position = validPositions.includes(posValue) ? posValue : 'center';
+    } else {
+        this._position = 'center'; // Default if attribute not present
+    }
+    console.log(`AdlSurvey _parseAttributes: position set to ${this._position}`);
+
+    // Note: 'theme' attribute is handled by CSS selector :host([theme="modal"])
+    // Color attributes are handled by _parseColorAttributes
+  }
+
+  applyStyles() { // Renaming to applyStyles might be more accurate now
+    if (!this._colors) {
+      console.log("AdlSurvey applyStyles: Skipping, no colors object found.");
+      return;
+    }
+    // Also ensure _zIndex has been parsed (should be handled by initial _parseAttributes)
+    console.log(`AdlSurvey applyStyles: Applying styles. Colors: ${JSON.stringify(this._colors)}, Z-Index: ${this._zIndex}`);
+
+    const colors = this._colors;
+    // Generate the CSS string including the z-index variable
+    const dynamicStyles = /* CSS */`
+        :host {
+          /* Color Variables */
+          --adl-survey-color: ${colors.color};
+          --adl-survey-background-color: ${colors.backgroundColor};
+          --adl-survey-button-color: ${colors.buttonColor};
+          --adl-survey-button-background-color: ${colors.buttonBackgroundColor};
+          --adl-survey-button-scale-color: ${colors.buttonScaleColor};
+          --adl-survey-button-scale-background-color: ${colors.buttonScaleBackgroundColor};
+          --adl-survey-button-scale-border-color: ${colors.buttonScaleBorderColor};
+
+          /* Z-Index Variable */
+          --adl-survey-z-index: ${this._zIndex};
+        }
+      `;
+    console.log("AdlSurvey applyStyles: Generated CSS:", dynamicStyles);
+
+    // Update or add the stylesheet (same logic as before)
+    // Maybe give this stylesheet a more specific purpose if you have multiple dynamic ones
+    const styleSheetKey = 'dynamic-styles'; // Give it a conceptual key
+    let sheet = this.shadowRoot.adoptedStyleSheets.find(s => s[styleSheetKey]);
+
+    if (sheet) {
+      console.log("AdlSurvey applyStyles: Replacing existing dynamic stylesheet.");
+      sheet.replaceSync(dynamicStyles);
+    } else {
+      console.log("AdlSurvey applyStyles: Adding new dynamic stylesheet.");
+      sheet = new CSSStyleSheet();
+      sheet[styleSheetKey] = true; // Mark the sheet
+      sheet.replaceSync(dynamicStyles);
+      // Add this new sheet to the array of adopted sheets
+      this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, sheet];
+    }
+    console.log("AdlSurvey applyStyles: Stylesheet updated/added.");
   }
 
   // --- Core Rendering Function ---
@@ -242,9 +345,9 @@ class AdlSurvey extends HTMLElement {
     console.log("AdlSurvey render: Starting render process.");
     // Ensure we have the original HTML blueprint
     if (this.originalHTML === null) {
-        console.error("AdlSurvey render: Cannot render, originalHTML not captured yet.");
-        // This should not happen if tryInitialRender logic is correct
-        return;
+      console.error("AdlSurvey render: Cannot render, originalHTML not captured yet.");
+      // This should not happen if tryInitialRender logic is correct
+      return;
     }
 
     // 1. Clear previous shadow DOM content for idempotency
@@ -265,46 +368,46 @@ class AdlSurvey extends HTMLElement {
     let questionsContainer; // Define here for broader scope
 
     if (header) {
-        container.appendChild(header.cloneNode(true));
+      container.appendChild(header.cloneNode(true));
     } else {
-        console.warn("AdlSurvey render: Original HTML missing <header>, adding default.");
-        const defaultHeader = document.createElement('header');
-        defaultHeader.innerHTML = `<h2>Survey</h2><button class="close"></button>`;
-        container.appendChild(defaultHeader);
+      console.warn("AdlSurvey render: Original HTML missing <header>, adding default.");
+      const defaultHeader = document.createElement('header');
+      defaultHeader.innerHTML = `<h2>Survey</h2><button class="close"></button>`;
+      container.appendChild(defaultHeader);
     }
 
     if (main) {
-        questionsContainer = main.cloneNode(true);
-        questionsContainer.querySelectorAll('likert-scale').forEach(el => el.remove()); // Remove placeholders
-        container.appendChild(questionsContainer);
+      questionsContainer = main.cloneNode(true);
+      questionsContainer.querySelectorAll('likert-scale').forEach(el => el.remove()); // Remove placeholders
+      container.appendChild(questionsContainer);
     } else {
-        console.warn("AdlSurvey render: Original HTML missing <main class='questions-container'>, adding default.");
-        questionsContainer = document.createElement('main');
-        questionsContainer.className = 'questions-container';
-        container.appendChild(questionsContainer);
+      console.warn("AdlSurvey render: Original HTML missing <main class='questions-container'>, adding default.");
+      questionsContainer = document.createElement('main');
+      questionsContainer.className = 'questions-container';
+      container.appendChild(questionsContainer);
     }
 
     // Ensure 'thanks' div exists within questionsContainer
     let thanksDiv = questionsContainer.querySelector('.thanks');
     if (!thanksDiv) {
-        thanksDiv = document.createElement('div');
-        thanksDiv.className = 'thanks hidden';
-        thanksDiv.innerHTML = '<p>¡Gracias por completar la encuesta!</p><p>Tu opinión es muy importante para nosotros.</p>';
-        questionsContainer.appendChild(thanksDiv); // Append to the actual container
+      thanksDiv = document.createElement('div');
+      thanksDiv.className = 'thanks hidden';
+      thanksDiv.innerHTML = '<p>¡Gracias por completar la encuesta!</p><p>Tu opinión es muy importante para nosotros.</p>';
+      questionsContainer.appendChild(thanksDiv); // Append to the actual container
     } else {
-        thanksDiv.classList.add('hidden'); // Ensure it starts hidden
+      thanksDiv.classList.add('hidden'); // Ensure it starts hidden
     }
 
 
     if (footer) {
-        container.appendChild(footer.cloneNode(true));
+      container.appendChild(footer.cloneNode(true));
     } else {
-        console.warn("AdlSurvey render: Original HTML missing <footer>, adding default.");
-        const defaultFooter = document.createElement('footer');
-        defaultFooter.innerHTML = `
+      console.warn("AdlSurvey render: Original HTML missing <footer>, adding default.");
+      const defaultFooter = document.createElement('footer');
+      defaultFooter.innerHTML = `
             <div class="navigation-controls"><button class="btn btn-primary btn-next" type="button" disabled>Siguiente</button></div>
             <div class="pagination"><span class="pagination-info"></span></div>`;
-        container.appendChild(defaultFooter);
+      container.appendChild(defaultFooter);
     }
 
     // Append the fully constructed container to the shadow DOM
@@ -318,18 +421,18 @@ class AdlSurvey extends HTMLElement {
     this.questionMap = {};
 
     originalScales.forEach(originalScale => {
-        const clonedScale = originalScale.cloneNode(true);
-        const questionId = clonedScale.getAttribute('question-id');
+      const clonedScale = originalScale.cloneNode(true);
+      const questionId = clonedScale.getAttribute('question-id');
 
-        // Insert before the 'thanks' div
-        questionsContainer.insertBefore(clonedScale, thanksDiv);
+      // Insert before the 'thanks' div
+      questionsContainer.insertBefore(clonedScale, thanksDiv);
 
-        this.questions.push(clonedScale);
-        if (questionId) {
-            this.questionMap[questionId] = clonedScale;
-        } else {
-            console.warn("AdlSurvey render: LikertScale in original HTML missing 'question-id'.", originalScale);
-        }
+      this.questions.push(clonedScale);
+      if (questionId) {
+        this.questionMap[questionId] = clonedScale;
+      } else {
+        console.warn("AdlSurvey render: LikertScale in original HTML missing 'question-id'.", originalScale);
+      }
     });
     console.log(`AdlSurvey render: Cloned ${this.questions.length} questions.`);
 
@@ -415,17 +518,17 @@ class AdlSurvey extends HTMLElement {
       // Determine current page index based on first visible question before advancing
       let currentVisibleIndex = -1;
       if (visibleQuestions.length > 0) {
-          currentVisibleIndex = this.questions.findIndex(q => q === visibleQuestions[0]);
+        currentVisibleIndex = this.questions.findIndex(q => q === visibleQuestions[0]);
       }
       if (currentVisibleIndex !== -1) {
-          // Calculate page number based on index and items per page
-          this.currentPage = Math.floor(currentVisibleIndex / this.questionsPerPage);
+        // Calculate page number based on index and items per page
+        this.currentPage = Math.floor(currentVisibleIndex / this.questionsPerPage);
       } else if (this.currentPage === -1) {
-          // If we were in custom nav, need a way to determine the 'next' page.
-          // This is complex. Simplest might be to find the *last* question in the sequence?
-          // Or just default back to page 0? Let's default for now.
-          console.warn("AdlSurvey goToNextPage: Exiting custom nav, defaulting to page 0 for next step.");
-          this.currentPage = -1; // Will become 0 after increment below
+        // If we were in custom nav, need a way to determine the 'next' page.
+        // This is complex. Simplest might be to find the *last* question in the sequence?
+        // Or just default back to page 0? Let's default for now.
+        console.warn("AdlSurvey goToNextPage: Exiting custom nav, defaulting to page 0 for next step.");
+        this.currentPage = -1; // Will become 0 after increment below
       }
       // else: Keep existing this.currentPage if index not found and not -1
 
@@ -436,16 +539,16 @@ class AdlSurvey extends HTMLElement {
       console.log(`AdlSurvey goToNextPage: Total pages: ${totalPages}`);
 
       if (this.currentPage < totalPages) {
-         console.log(`AdlSurvey goToNextPage: Advancing to page ${this.currentPage}`);
-         this.updateQuestionVisibility(); // Show the new standard page
-         this.updatePaginationInfo();
-         this.updateNextButtonState();
+        console.log(`AdlSurvey goToNextPage: Advancing to page ${this.currentPage}`);
+        this.updateQuestionVisibility(); // Show the new standard page
+        this.updatePaginationInfo();
+        this.updateNextButtonState();
       } else {
-         console.log("AdlSurvey goToNextPage: Reached end of survey.");
-         this.isSurveyCompleted = true;
-         this.updateQuestionVisibility(); // Show 'thanks'
-         this.updatePaginationInfo();
-         this.updateNextButtonState(); // Update button text/state
+        console.log("AdlSurvey goToNextPage: Reached end of survey.");
+        this.isSurveyCompleted = true;
+        this.updateQuestionVisibility(); // Show 'thanks'
+        this.updatePaginationInfo();
+        this.updateNextButtonState(); // Update button text/state
       }
     }
   }
@@ -469,31 +572,31 @@ class AdlSurvey extends HTMLElement {
 
     // Handle standard pagination visibility (currentPage >= 0)
     if (this.currentPage >= 0) {
-        const startIdx = this.currentPage * this.questionsPerPage;
-        // Ensure endIdx doesn't exceed array bounds
-        const endIdx = Math.min(startIdx + this.questionsPerPage, this.questions.length);
+      const startIdx = this.currentPage * this.questionsPerPage;
+      // Ensure endIdx doesn't exceed array bounds
+      const endIdx = Math.min(startIdx + this.questionsPerPage, this.questions.length);
 
-        console.log(`AdlSurvey UpdateVisibility: Standard page. Showing indices ${startIdx} to ${endIdx - 1}`);
+      console.log(`AdlSurvey UpdateVisibility: Standard page. Showing indices ${startIdx} to ${endIdx - 1}`);
 
-        if (startIdx < this.questions.length) { // Check if start index is valid
-            for (let i = startIdx; i < endIdx; i++) {
-                if (this.questions[i]) {
-                    this.questions[i].classList.remove('hidden');
-                    console.log(`AdlSurvey UpdateVisibility: Making question index ${i} visible.`);
-                } else {
-                    console.warn(`AdlSurvey UpdateVisibility: Question at index ${i} is undefined.`);
-                }
-            }
-        } else {
-             console.warn(`AdlSurvey UpdateVisibility: Calculated start index (${startIdx}) is out of bounds.`);
-             // Maybe show page 0 or handle completion? This state indicates an issue.
+      if (startIdx < this.questions.length) { // Check if start index is valid
+        for (let i = startIdx; i < endIdx; i++) {
+          if (this.questions[i]) {
+            this.questions[i].classList.remove('hidden');
+            console.log(`AdlSurvey UpdateVisibility: Making question index ${i} visible.`);
+          } else {
+            console.warn(`AdlSurvey UpdateVisibility: Question at index ${i} is undefined.`);
+          }
         }
+      } else {
+        console.warn(`AdlSurvey UpdateVisibility: Calculated start index (${startIdx}) is out of bounds.`);
+        // Maybe show page 0 or handle completion? This state indicates an issue.
+      }
     } else {
-        // currentPage is -1 (Custom Path)
-        // Visibility for custom path jumps is now handled directly in goToNextPage.
-        // This function might be called unnecessarily after a jump, but hiding all
-        // questions at the start prevents duplicates if logic changes.
-        console.log("AdlSurvey UpdateVisibility: In custom nav state (-1), visibility handled by goToNextPage.");
+      // currentPage is -1 (Custom Path)
+      // Visibility for custom path jumps is now handled directly in goToNextPage.
+      // This function might be called unnecessarily after a jump, but hiding all
+      // questions at the start prevents duplicates if logic changes.
+      console.log("AdlSurvey UpdateVisibility: In custom nav state (-1), visibility handled by goToNextPage.");
     }
     // Update button state based on newly visible questions
     // this.updateNextButtonState(); // Called by goToNextPage after visibility update
@@ -510,11 +613,11 @@ class AdlSurvey extends HTMLElement {
       // Find the currently visible question (should be only one after a jump)
       const visibleQ = this.questions.find(q => !q.classList.contains('hidden'));
       if (visibleQ) {
-          const qId = visibleQ.getAttribute('question-id');
-          const index = this.questions.findIndex(q => q === visibleQ);
-          text = `Pregunta ${index + 1} de ${this.questions.length} (ID: ${qId})`;
+        const qId = visibleQ.getAttribute('question-id');
+        const index = this.questions.findIndex(q => q === visibleQ);
+        text = `Pregunta ${index + 1} de ${this.questions.length} (ID: ${qId})`;
       } else {
-          text = `Navegación personalizada`; // Fallback
+        text = `Navegación personalizada`; // Fallback
       }
     } else {
       const totalPages = Math.ceil(this.questions.length / this.questionsPerPage);
@@ -531,12 +634,12 @@ class AdlSurvey extends HTMLElement {
     if (!nextButton) return;
 
     if (this.isSurveyCompleted) {
-        nextButton.textContent = 'Cerrar';
-        nextButton.removeAttribute('disabled');
-        return;
+      nextButton.textContent = 'Cerrar';
+      nextButton.removeAttribute('disabled');
+      return;
     } else {
-        // Ensure text is 'Siguiente' if not completed
-        nextButton.textContent = 'Siguiente';
+      // Ensure text is 'Siguiente' if not completed
+      nextButton.textContent = 'Siguiente';
     }
 
     const visibleQuestions = this.getVisibleQuestions();

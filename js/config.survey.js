@@ -6,7 +6,7 @@ adlSurvey.setAttribute("questions-per-page", "1");
 
 const adlSurvey = document.querySelector("adl-survey");
 
-adlSurvey.configure({
+/*adlSurvey.configure({
   theme: "modal",
   questionsPerPage: 1,
   questions: [],
@@ -19,7 +19,7 @@ adlSurvey.configure({
     buttonScaleBackgroundColor: "#fff",
     buttonScaleBorderColor: "#8c9394"
   }
-});
+});*/
 
 // En este momento, se ejecuta el connectedCallback() del componente
 //document.body.append(adlSurvey);
