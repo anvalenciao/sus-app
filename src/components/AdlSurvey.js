@@ -137,7 +137,7 @@ class AdlSurvey extends HTMLElement {
       button[action="close"], button[action="collapse"], button[action="close"], button[action="collapse"] {
         /* Shared styles */
         position: absolute; top: 0; right: 0; display: block;
-        width: 32px; height: 32px; font-size: 0;
+        width: 40px; height: 40px; font-size: 0;
         transition: transform 150ms, opacity 0.15s ease-in-out;
         margin: 0.5rem; border: 0; padding: 0; background: 0 0;
         cursor: pointer; opacity: 0.5;
@@ -168,18 +168,20 @@ class AdlSurvey extends HTMLElement {
       button[action="close"]:hover { transform: rotateZ(90deg); }
 
       /* Default "Down Arrow" Icon styling (applied if button has button[action="collapse"] class) */
-      button[action="collapse"] { transition: transform 0.3s ease-in-out, opacity 0.15s ease-in-out; }
+      button[action="collapse"] { transition: transform 0.2s ease-in-out, opacity 0.15s ease-in-out; transform: rotate(180deg); }
+      button[action="collapse"]:before, button[action="collapse"]:after {
+        position: absolute; top: 50%; left: 50%; content: ''; width: 10px; height: 2px; background: var(--adl-survey-color, #000); transform-origin: center;
+      }
       button[action="collapse"]:before {
-         position: absolute; top: 50%; left: 50%; content: ''; width: 10px; height: 2px;
-         background: var(--adl-survey-color, #000); transform: translate(-70%, -50%) rotate(-45deg); transform-origin: center;
+        transform: translate(-90%, -50%) rotate(-45deg);
       }
       button[action="collapse"]:after {
-         position: absolute; top: 50%; left: 50%; content: ''; width: 10px; height: 2px;
-         background: var(--adl-survey-color, #000); transform: translate(-30%, -50%) rotate(45deg); transform-origin: center;
+         transform: translate(-30%, -50%) rotate(45deg); 
       }
+
       /* Rotate arrow UP when survey is collapsed (Target host attribute and button) */
       :host([collapsed]) button[action="collapse"] {
-        transform: rotate(180deg);
+        transform: rotate(0deg);
       }
       /* Or using part on the default button */
       /* button::part(button) { ... } */
