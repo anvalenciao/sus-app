@@ -1,12 +1,12 @@
 class LikertScale extends HTMLElement {
   constructor() {
-      super();
-      this.attachShadow({ mode: 'open' });
-      this.selectedOption = null; // Store the selected option
-      this.logicRules = []; // Store logic rules
+    super();
+    this.attachShadow({ mode: 'open' });
+    this.selectedOption = null; // Store the selected option
+    this.logicRules = []; // Store logic rules
 
-      // Create styles once
-      const styles = /* CSS */`
+    // Create styles once
+    const styles = /* CSS */`
       :host {display:block;}
       :host h3{font-weight:700;line-height:1.5em;font-size:1em;margin:0 0 0.5rem 0;overflow-wrap:break-word}
       :host .scale{display:flex;flex-direction:column;}
@@ -28,11 +28,11 @@ class LikertScale extends HTMLElement {
   handleEvent(event) {
     if (event.type === "change") {
       this.selectedOption = event.target.value;
-      
+
       // Get next question ID based on logic rules
       const nextQuestionId = this.getNextQuestionId();
       console.log(nextQuestionId);
-      
+
       const messageEvent = new CustomEvent("survey:question", {
         detail: {
           value: event.target.value,
@@ -70,7 +70,7 @@ class LikertScale extends HTMLElement {
     if (oldValue !== newValue) {
       this.render();
       this.attachListeners();
-      
+
       // Restore selected value if it exists
       if (this.selectedOption !== null) {
         const input = this.shadowRoot.querySelector(`input[value="${this.selectedOption}"]`);
@@ -85,33 +85,42 @@ class LikertScale extends HTMLElement {
     this.logicRules = [];
     // Look for all child logic elements
     const logicElements = this.querySelectorAll('logic');
-    
-    
+
+
     logicElements.forEach(logic => {
       const type = logic.getAttribute('type');
       const target = logic.getAttribute('target');
       const range = logic.getAttribute('range');
-      
+
       if (type && target) {
         const rule = {
           type,
           target
         };
-        
+
         // Parse range if it exists
         if (range) {
           const rangeParts = range.split('-');
           if (rangeParts.length === 2) {
-            rule.rangeMin = parseInt(rangeParts[0], 10);
-            rule.rangeMax = parseInt(rangeParts[1], 10);
+            const min = parseInt(rangeParts[0], 10); // Use temporary vars
+            const max = parseInt(rangeParts[1], 10);
+            // Check if parsing was successful
+            if (!isNaN(min) && !isNaN(max)) {
+              rule.rangeMin = min;
+              rule.rangeMax = max;
+            } else {
+              console.warn(`LikertScale (${this.getAttribute('question-id')}): Invalid range attribute value: ${range}`);
+            }
+          } else {
+            console.warn(`LikertScale (${this.getAttribute('question-id')}): Invalid range format: ${range}. Expected format 'min-max'.`);
           }
         }
-        
+
         this.logicRules.push(rule);
       }
     });
     console.log(this.logicRules);
-    
+
   }
 
   // Method to get the next question based on current selection
@@ -119,9 +128,9 @@ class LikertScale extends HTMLElement {
     if (!this.selectedOption || this.logicRules.length === 0) {
       return null; // No logic rules or no selection
     }
-    
+
     const selection = parseInt(this.selectedOption, 10);
-    
+
     // Find matching rule based on the selection
     for (const rule of this.logicRules) {
       if (rule.type === 'conditional') {
@@ -134,30 +143,30 @@ class LikertScale extends HTMLElement {
         return rule.target;
       }
     }
-    
+
     return null; // No matching rule found
   }
 
   getMin() {
-      const minAttr = this.getAttribute('min');
-      return minAttr ? parseInt(minAttr, 10) : 1; // Default to 1 if not provided
+    const minAttr = this.getAttribute('min');
+    return minAttr ? parseInt(minAttr, 10) : 1; // Default to 1 if not provided
   }
 
   getMax() {
-      const maxAttr = this.getAttribute('max');
-      return maxAttr ? parseInt(maxAttr, 10) : 5; // Default to 5 if not provided
+    const maxAttr = this.getAttribute('max');
+    return maxAttr ? parseInt(maxAttr, 10) : 5; // Default to 5 if not provided
   }
 
   getLowScoreLabel() {
-      return this.getAttribute('low-score-label') || 'Low'; // Default label
+    return this.getAttribute('low-score-label') || 'Low'; // Default label
   }
 
   getHighScoreLabel() {
-      return this.getAttribute('high-score-label') || 'High'; // Default label
+    return this.getAttribute('high-score-label') || 'High'; // Default label
   }
 
   isRequired() {
-      return this.hasAttribute('required'); // Check if the attribute exists
+    return this.hasAttribute('required'); // Check if the attribute exists
   }
 
   render() {
@@ -175,10 +184,10 @@ class LikertScale extends HTMLElement {
     `;
 
     for (let i = min; i <= max; i++) {
-        const id = `likert-${questionId}-${i}`;
-        const isSelected = this.selectedOption == i;
-        
-        scaleHTML += /* HTML */`
+      const id = `likert-${questionId}-${i}`;
+      const isSelected = this.selectedOption == i;
+
+      scaleHTML += /* HTML */`
           <input type="radio" name="likert-${questionId}" id="${id}" value="${i}" data-value="${i}" ${isSelected ? 'checked' : ''} />
           <label for="${id}"> <span>${i}</span> </label>
         `;
@@ -190,7 +199,7 @@ class LikertScale extends HTMLElement {
         <span>${highScoreLabel}</span>
       </div>
     </div>`;
-    
+
     this.shadowRoot.innerHTML = scaleHTML;
   }
 

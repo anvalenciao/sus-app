@@ -15,7 +15,7 @@ class AdlSurvey extends HTMLElement {
     this.attachShadow({ mode: "open" });
 
     // --- State and Properties ---
-    this.data = null; // Last event data (consider if needed globally)
+    this.lastQuestionEventDetail = null; // Last event data (consider if needed globally)
     this.answers = {}; // Store answers { questionId: value }
     this.currentPage = 0; // Current page index (0-based), -1 for custom path
     this.questionsPerPage = 1; // Default, overridden by attribute
@@ -23,7 +23,6 @@ class AdlSurvey extends HTMLElement {
     this.questions = []; // Array of CLONED question elements in shadow DOM
     this.questionMap = {}; // Map question IDs to their CLONED elements
     this.originalHTML = null; // Store original light DOM content
-    this._config = null; // Store configuration object if using .configure()
 
     // --- DOM Ready / Connection State ---
     this._isReadyToRender = false; // Flag: True when DOMContentLoaded has fired
@@ -311,7 +310,7 @@ class AdlSurvey extends HTMLElement {
     console.log("AdlSurvey connectedCallback");
 
     // Add component-specific listeners
-    document.addEventListener("survey:question", this.boundHandleSurveyQuestion);
+    this.addEventListener("survey:question", this.boundHandleSurveyQuestion);
 
     // Parse attributes that might affect rendering
     this._parseAttributes();
@@ -332,7 +331,7 @@ class AdlSurvey extends HTMLElement {
 
     // Clean up global/document listeners
     document.removeEventListener("DOMContentLoaded", this.boundDomReadyCallback);
-    document.removeEventListener("survey:question", this.boundHandleSurveyQuestion);
+    this.removeEventListener("survey:question", this.boundHandleSurveyQuestion);
     // Note: Shadow DOM listeners (like button clicks) are removed automatically when shadow DOM is cleared or element destroyed.
   }
 
@@ -527,71 +526,65 @@ class AdlSurvey extends HTMLElement {
   // --- Core Rendering Function ---
   render() {
     console.log("AdlSurvey render: Starting render process.");
-    // Ensure we have the original HTML blueprint
     if (this.originalHTML === null) {
       console.error("AdlSurvey render: Cannot render, originalHTML not captured yet.");
-      // This should not happen if tryInitialRender logic is correct
       return;
     }
 
-    // 1. Clear previous shadow DOM content for idempotency
-    this.shadowRoot.innerHTML = '';
+    this.shadowRoot.innerHTML = ''; // Clear previous content
 
-    // 2. Parse the original HTML
     const parser = new DOMParser();
     const doc = parser.parseFromString(this.originalHTML, 'text/html');
 
-    // 3. Create main container
     const container = document.createElement('div');
     container.className = 'container';
 
-    // 4. Clone/Create structural elements
-    const header = doc.querySelector('header');
-    const main = doc.querySelector('main.questions-container');
-    const footer = doc.querySelector('footer');
-    let questionsContainer; // Define here for broader scope
+    // --- Header ---
+    let headerElement;
+    const originalHeader = doc.querySelector('header');
+    if (originalHeader) {
+      headerElement = originalHeader.cloneNode(true);
+      // *** OPTIMIZATION START: Ensure both action buttons exist for styling/visibility logic ***
+      let closeBtn = headerElement.querySelector('button[action="close"]');
+      if (!closeBtn) {
+          closeBtn = document.createElement('button');
+          closeBtn.setAttribute('action', 'close');
+          // Add default classes/parts if needed, though CSS targets [action="close"]
+          // closeBtn.className = 'close close-button-default';
+          // closeBtn.part = 'button close-button';
+          closeBtn.setAttribute('aria-label', 'Close Survey');
+          headerElement.appendChild(closeBtn); // Append if missing
+      }
 
-
-    // --- Determine Theme and Handler ---
-    const theme = this.getAttribute('theme');
-    const isPopup = theme === 'popup';
-    this.boundActionButtonHandler = isPopup ? this.boundTogglePopupCollapse : this.boundCloseSurvey;
-    console.log(`AdlSurvey render: Theme=${theme}, Handler=${isPopup ? 'Toggle' : 'Close'}`);
-
-    // --- Determine Default Button HTML ---
-    let defaultButtonHTML = '';
-    let defaultButtonClass = 'close'; // Base class for styling via CSS
-    let defaultButtonAriaLabel = '';
-    let defaultButtonPart = 'button'; // Base part name
-
-    if (isPopup) {
-      defaultButtonClass += ' collapse-button-default'; // Specific class for arrow styling
-      defaultButtonAriaLabel = 'Toggle Survey';
-      defaultButtonPart += ' collapse-button'; // Specific part name
-    } else {
-      defaultButtonClass += ' close-button-default'; // Specific class for X styling
-      defaultButtonAriaLabel = 'Close Survey';
-      defaultButtonPart += ' close-button'; // Specific part name
-    }
-    // Construct the default button HTML string
-    defaultButtonHTML = `<button class="${defaultButtonClass}" part="${defaultButtonPart}" aria-label="${defaultButtonAriaLabel}"></button>`;
-
-
-    // --- Build Header ---
-    let headerToAppend;
-
-    if (header) {
-      container.appendChild(header.cloneNode(true));
+      let collapseBtn = headerElement.querySelector('button[action="collapse"]');
+      if (!collapseBtn) {
+          collapseBtn = document.createElement('button');
+          collapseBtn.setAttribute('action', 'collapse');
+          // Add default classes/parts if needed
+          // collapseBtn.className = 'close collapse-button-default'; // Base 'close' class might be confusing here
+          // collapseBtn.part = 'button collapse-button';
+          collapseBtn.setAttribute('aria-label', 'Toggle Survey');
+          headerElement.appendChild(collapseBtn); // Append if missing
+      }
+      // *** OPTIMIZATION END ***
     } else {
       console.warn("AdlSurvey render: Original HTML missing <header>, adding default.");
-      const defaultHeader = document.createElement('header');
-      defaultHeader.innerHTML = `<h2>Survey</h2><button class="close"></button>`;
-      container.appendChild(defaultHeader);
+      headerElement = document.createElement('header');
+      // Add default content INCLUDING BOTH buttons
+      headerElement.innerHTML = `<h2>Survey</h2>
+                                 <button action="close" aria-label="Close Survey"></button>
+                                 <button action="collapse" aria-label="Toggle Survey"></button>`;
     }
+    container.appendChild(headerElement);
 
+
+    // --- Main (Questions Container) ---
+    let questionsContainer;
+    const main = doc.querySelector('main.questions-container');
     if (main) {
       questionsContainer = main.cloneNode(true);
-      questionsContainer.querySelectorAll('likert-scale').forEach(el => el.remove()); // Remove placeholders
+      // Clear placeholder scales from the template clone
+      questionsContainer.querySelectorAll('likert-scale').forEach(el => el.remove());
       container.appendChild(questionsContainer);
     } else {
       console.warn("AdlSurvey render: Original HTML missing <main class='questions-container'>, adding default.");
@@ -606,12 +599,13 @@ class AdlSurvey extends HTMLElement {
       thanksDiv = document.createElement('div');
       thanksDiv.className = 'thanks hidden';
       thanksDiv.innerHTML = '<p>¡Gracias por completar la encuesta!</p><p>Tu opinión es muy importante para nosotros.</p>';
-      questionsContainer.appendChild(thanksDiv); // Append to the actual container
+      questionsContainer.appendChild(thanksDiv);
     } else {
       thanksDiv.classList.add('hidden'); // Ensure it starts hidden
     }
 
-
+    // --- Footer ---
+    const footer = doc.querySelector('footer');
     if (footer) {
       container.appendChild(footer.cloneNode(true));
     } else {
@@ -623,23 +617,19 @@ class AdlSurvey extends HTMLElement {
       container.appendChild(defaultFooter);
     }
 
-    // Append the fully constructed container to the shadow DOM
+    // Append the fully constructed container
     this.shadowRoot.appendChild(container);
 
     // --- Question Cloning ---
     const originalScales = doc.querySelectorAll('likert-scale');
     console.log(`AdlSurvey render: Found ${originalScales.length} original likert-scale elements.`);
-
-    this.questions = []; // Reset internal state
+    this.questions = [];
     this.questionMap = {};
-
     originalScales.forEach(originalScale => {
       const clonedScale = originalScale.cloneNode(true);
       const questionId = clonedScale.getAttribute('question-id');
-
-      // Insert before the 'thanks' div
+      // Insert cloned questions *before* the thanks div within the questionsContainer
       questionsContainer.insertBefore(clonedScale, thanksDiv);
-
       this.questions.push(clonedScale);
       if (questionId) {
         this.questionMap[questionId] = clonedScale;
@@ -649,82 +639,44 @@ class AdlSurvey extends HTMLElement {
     });
     console.log(`AdlSurvey render: Cloned ${this.questions.length} questions.`);
 
-    // --- Add Event Listeners to Action Buttons ---
-    this._attachActionListeners(); // Call helper to attach listeners
-
+    // --- Attach Listeners ---
+    this._attachActionListeners(); // Attaches to buttons based on action attribute
     const nextBtn = this.shadowRoot.querySelector('.btn-next');
-    nextBtn?.addEventListener('click', this.boundGoToNextPage);
+    if (nextBtn) {
+         // Ensure listener isn't added multiple times if render is called again (though clearing innerHTML helps)
+         // Consider removing listener before adding if issues arise, but usually okay with full render.
+         nextBtn.addEventListener('click', this.boundGoToNextPage);
+    } else {
+        console.warn("AdlSurvey render: '.btn-next' not found in footer.");
+    }
     console.log("AdlSurvey render: Attached listeners to shadow DOM buttons (if found).");
 
-
     // --- Initialize Visibility & State ---
+    this._updateButtonVisibility(); // <<< Now crucial to hide the irrelevant action button
     this.updateQuestionVisibility();
     this.updatePaginationInfo();
     this.updateNextButtonState();
-    //this._updateButtonVisibility(); // Add function to show/hide correct button
 
     console.log("AdlSurvey render: Render process complete.");
   }
 
   // --- Helper to Attach Listeners based on 'action' attribute ---
   _attachActionListeners() {
-    // Remove previous listeners first to prevent duplicates if render is called again
-    // This requires storing references or querying differently. Let's query each time.
     const closeBtn = this.shadowRoot.querySelector('button[action="close"]');
     const collapseBtn = this.shadowRoot.querySelector('button[action="collapse"]');
 
-    // It's safer to remove listeners using the *exact same* bound function reference
-    if (closeBtn && this.boundCloseSurvey) {
-      closeBtn.removeEventListener('click', this.boundCloseSurvey); // Remove previous
-      closeBtn.addEventListener('click', this.boundCloseSurvey); // Add current
+    // Remove potentially existing listeners before adding (safer if render logic changes)
+    if(closeBtn) closeBtn.removeEventListener('click', this.boundCloseSurvey);
+    if(collapseBtn) collapseBtn.removeEventListener('click', this.boundTogglePopupCollapse);
+
+    // Add listeners
+    if (closeBtn) {
+      closeBtn.addEventListener('click', this.boundCloseSurvey);
       console.log("AdlSurvey _attachActionListeners: Attached closeSurvey to", closeBtn);
-    } else {
-      console.log("AdlSurvey _attachActionListeners: Close button not found or handler missing.");
     }
-
-    if (collapseBtn && this.boundTogglePopupCollapse) {
-      collapseBtn.removeEventListener('click', this.boundTogglePopupCollapse); // Remove previous
-      collapseBtn.addEventListener('click', this.boundTogglePopupCollapse); // Add current
+    if (collapseBtn) {
+      collapseBtn.addEventListener('click', this.boundTogglePopupCollapse);
       console.log("AdlSurvey _attachActionListeners: Attached togglePopupCollapse to", collapseBtn);
-    } else {
-      console.log("AdlSurvey _attachActionListeners: Collapse button not found or handler missing.");
-    }
-  }
-
-  // _attachListenerToSlot remains largely the same, just takes the handler dynamically
-  _attachListenerToSlot(slotElement, handler) {
-    if (!slotElement || !handler) { // Check handler exists
-      console.log(`Skipping listener for slot "${slotElement?.name}", no handler provided.`);
-      return;
-    }
-
-    const previousElement = slotElement._assignedButton;
-    if (previousElement) {
-      // Attempt to remove the previously attached handler
-      // This requires knowing which handler was attached before, which is tricky.
-      // A simpler robust approach is often to attach to a container and check event.target,
-      // but let's try managing it on the slot for now.
-      if (slotElement._assignedHandler) { // Store the handler used
-        previousElement.removeEventListener('click', slotElement._assignedHandler);
-      }
-    }
-
-    const assignedNodes = slotElement.assignedNodes({ flatten: true });
-    let buttonElement = assignedNodes.find(node => node.nodeType === Node.ELEMENT_NODE && node.matches('button'));
-
-    if (!buttonElement) {
-      buttonElement = slotElement.querySelector('button');
-    }
-
-    if (buttonElement) {
-      console.log(`Attaching handler (${handler.name}) to button in slot "${slotElement.name}":`, buttonElement);
-      buttonElement.addEventListener('click', handler);
-      slotElement._assignedButton = buttonElement;
-      slotElement._assignedHandler = handler; // Store the handler we just attached
-    } else {
-      console.log(`No button found for slot "${slotElement.name}"`);
-      slotElement._assignedButton = null;
-      slotElement._assignedHandler = null;
     }
   }
 
@@ -732,7 +684,11 @@ class AdlSurvey extends HTMLElement {
   _updateButtonVisibility() {
     const closeBtn = this.shadowRoot.querySelector('button[action="close"]');
     const collapseBtn = this.shadowRoot.querySelector('button[action="collapse"]');
-    if (!closeBtn || !collapseBtn) return;
+    // If buttons aren't found, something is wrong with render, but add guards anyway
+    if (!closeBtn || !collapseBtn) {
+        console.warn("_updateButtonVisibility: Action buttons not found in header.");
+        return;
+    }
 
     const isPopup = this.getAttribute('theme') === 'popup';
 
@@ -742,12 +698,6 @@ class AdlSurvey extends HTMLElement {
 
     console.log(`_updateButtonVisibility: Popup=${isPopup}, Close Hidden=${closeBtn.hidden}, Collapse Hidden=${collapseBtn.hidden}`);
   }
-
-  /*togglePopupCollapse() {
-    this.isPopupCollapsed = !this.isPopupCollapsed;
-    console.log(`AdlSurvey togglePopupCollapse: Setting collapsed state to ${this.isPopupCollapsed}`);
-    this._updateCollapsedAttribute();
-  }*/
 
   // --- Helper to Sync Attribute ---
   _updateCollapsedAttribute() {
@@ -764,13 +714,13 @@ class AdlSurvey extends HTMLElement {
 
   // --- Event Handlers ---
   // Renamed from handleEvent to be more specific
-  handleSurveyQuestion(event) {
-    // Ensure it's the event we expect (optional check)
+  // Optional: Rename this.data for clarity
+   handleSurveyQuestion(event) {
     if (event.type === "survey:question" && event.detail) {
       console.log(`AdlSurvey handleSurveyQuestion: Received answer for ${event.detail.questionId}`, event.detail);
-      this.data = event.detail; // Store last event data
+      // Rename this.data to this.lastQuestionEventDetail if desired
+      this.lastQuestionEventDetail = event.detail; // Store last event detail
       this.answers[event.detail.questionId] = event.detail.value;
-      // Update button state whenever an answer changes
       this.updateNextButtonState();
     }
   }
