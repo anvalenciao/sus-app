@@ -115,7 +115,7 @@ class AdlSurvey extends HTMLElement {
 
       :host header{padding:1rem;display:flex;flex-shrink:0;align-items:center;justify-content:space-between}
       :host header h2{font-size:1.375em;font-weight:500;line-height:1;margin-right:1em;color:var(--adl-survey-color,#000)}
-      :host .container{background:var(--adl-survey-background-color,#fff);border-radius:5px 5px 0 0;box-shadow:0 0 7px 0 #0000004d;font-size:.75em;margin:0 auto;min-width:300px;font-family:inherit}
+      :host main{background:var(--adl-survey-background-color,#fff);border-radius:5px 5px 0 0;box-shadow:0 0 7px 0 #0000004d;font-size:.75em;margin:0 auto;min-width:300px;font-family:inherit}
       :host footer{position:relative;align-items:center;display:flex;flex-direction:row-reverse;gap:12px;justify-content:space-between;padding:.75em;padding-top:calc(0.75em + 4px);width:100%}
       :host footer::after{content:'';position:absolute;top:0;left:0;width:100%;height:4px;background-color:var(--adl-survey-progress-track-color,#e0e2e8);z-index:1}
       :host footer::before{content:'';position:absolute;top:0;left:0;width:var(--adl-survey-progress-width,0%);height:4px;background-color:var(--adl-survey-progress-bar-color,var(--adl-survey-button-background-color,#008acc));z-index:2;transition:width .3s ease-in-out}
@@ -124,38 +124,38 @@ class AdlSurvey extends HTMLElement {
       :host .pagination{display:flex;align-items:center;gap:12px}
       :host .pagination-info{font-size:0.9em;color:#666}
 
-      :host button[action="close"],:host button[action="collapse"]{position:absolute;top:0;right:0;display:block;width:40px;height:40px;font-size:0;transition:transform 150ms,opacity .15s ease-in-out;margin:.5rem;border:0;padding:0;background:0 0;cursor:pointer;opacity:.5;box-sizing:border-box}
-      :host button[action="close"]:hover,:host button[action="collapse"]:hover{opacity:1}
+      :host .survey-close-button,:host .survey-collapse-button{position:absolute;top:0;right:0;display:block;width:40px;height:40px;font-size:0;transition:transform 150ms,opacity .15s ease-in-out;margin:.5rem;border:0;padding:0;background:0 0;cursor:pointer;opacity:.5;box-sizing:border-box}
+      :host .survey-close-button:hover,:host .survey-collapse-button:hover{opacity:1}
 
-      :host button[action="close"]:after,:host button[action="close"]:before{position:absolute;top:50%;left:50%;width:2px;height:18px;content:'';background:var(--adl-survey-color,#000)}
-      :host button[action="close"]:before{transform:rotate(45deg) translate(-50%,-50%);transform-origin:top left}
-      :host button[action="close"]:after{transform:rotate(-45deg) translate(-50%,-50%);transform-origin:top left}
-      :host button[action="close"]:hover{transform:rotateZ(90deg)}
+      :host .survey-close-button:after,:host .survey-close-button:before{position:absolute;top:50%;left:50%;width:2px;height:18px;content:'';background:var(--adl-survey-color,#000)}
+      :host .survey-close-button:before{transform:rotate(45deg) translate(-50%,-50%);transform-origin:top left}
+      :host .survey-close-button:after{transform:rotate(-45deg) translate(-50%,-50%);transform-origin:top left}
+      :host .survey-close-button:hover{transform:rotateZ(90deg)}
 
-      :host button[action="collapse"]{transition:transform .2s ease-in-out,opacity .15s ease-in-out;transform:rotate(180deg)}
-      :host button[action="collapse"]:before,:host button[action="collapse"]:after{position:absolute;top:50%;left:50%;content:'';width:10px;height:2px;background:var(--adl-survey-color,#000);transform-origin:center}
-      :host button[action="collapse"]:before{transform:translate(-90%,-50%) rotate(-45deg)}
-      :host button[action="collapse"]:after{transform:translate(-30%,-50%) rotate(45deg)}
+      :host .survey-collapse-button{transition:transform .2s ease-in-out,opacity .15s ease-in-out;transform:rotate(180deg)}
+      :host .survey-collapse-button:before,:host .survey-collapse-button:after{position:absolute;top:50%;left:50%;content:'';width:10px;height:2px;background:var(--adl-survey-color,#000);transform-origin:center}
+      :host .survey-collapse-button:before{transform:translate(-90%,-50%) rotate(-45deg)}
+      :host .survey-collapse-button:after{transform:translate(-30%,-50%) rotate(45deg)}
 
       /* --- Modal Theme --- */
       :host([theme="modal"]){z-index:var(--adl-survey-z-index,999);position:fixed;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:#0009;display:flex;align-items:center;justify-content:center}
       :host([theme="modal"][position="left"]){justify-content:flex-start}
       :host([theme="modal"][position="right"]){justify-content:flex-end}
-      :host([theme="modal"]) main{min-height:110px;padding:0 1em}
-      :host([theme="modal"]) .container{border-radius:8px;width:384px;animation:scaleUp .5s cubic-bezier(.165,.84,.44,1) forwards;margin:0 1em}
+      :host([theme="modal"]) section{min-height:110px;padding:0 1em}
+      :host([theme="modal"]) main{border-radius:8px;width:384px;animation:scaleUp .5s cubic-bezier(.165,.84,.44,1) forwards;margin:0 1em}
       :host([theme="modal"]) .thanks{font-size:1.375em;font-weight:600;text-align:center;padding:2em 1em}
 
       /* --- Popup Theme --- */
-      :host([collapsed]) main,:host([collapsed]) footer{display:none}
-      :host([collapsed]) button[action="collapse"]{transform:rotate(0deg)}
+      :host([collapsed]) section,:host([collapsed]) footer{display:none}
+      :host([collapsed]) .survey-collapse-button{transform:rotate(0deg)}
 
       :host([theme="popup"]){position:fixed;z-index:var(--adl-survey-z-index,999);bottom:0;width:320px;max-width:calc(100% - 2em);animation:slideToTop .5s ease-out forwards;right:1em;left:auto}
       :host([theme="popup"][position="left"]){left:1em;right:auto}
       :host([theme="popup"][position="center"]){left:50%;right:auto;transform:translateX(-50%);animation-name:slideToTopCenter}
-      :host([theme="popup"]) .container{width:100%;border-radius:8px 8px 0 0;box-shadow:0 2px 10px 0 #0000004d;background:var(--adl-survey-background-color,#fff);overflow:hidden}
-      :host([theme="popup"]) main{padding:0 1em 1rem 1rem;min-height:80px}
+      :host([theme="popup"]) main{width:100%;border-radius:8px 8px 0 0;box-shadow:0 2px 10px 0 #0000004d;background:var(--adl-survey-background-color,#fff);overflow:hidden}
+      :host([theme="popup"]) section{padding:0 1em 1rem 1rem;min-height:80px}
       :host([theme="popup"]) footer{padding:.75em 1em}
-      :host([theme="popup"]) button[action="collapse"]{margin:.5rem}
+      :host([theme="popup"]) .survey-collapse-button{margin:.5rem}
 
       @keyframes scaleUp{0%{transform:scale(.65);opacity:0}100%{transform:scale(1);opacity:1}}
       @keyframes slideToTop{0%{transform:translateY(100%);opacity:0}100%{transform:translateY(0);opacity:1}}
@@ -302,6 +302,7 @@ class AdlSurvey extends HTMLElement {
 
       console.log("AdlSurvey tryInitialRender: Conditions met, performing initial render.");
       this.originalHTML = this.innerHTML; // Capture HTML
+      this.innerHTML = '';
 
       // Parse ALL attributes initially (including colors) BEFORE rendering
       // This ensures colors is populated before applyStyles runs
@@ -411,7 +412,9 @@ class AdlSurvey extends HTMLElement {
       console.error("AdlSurvey render: Cannot render, originalHTML not captured yet.");
       return;
     }
+    this.shadowRoot.innerHTML = this.originalHTML;
 
+/*
     this.shadowRoot.innerHTML = ''; // Clear previous content
 
     const parser = new DOMParser();
@@ -425,8 +428,8 @@ class AdlSurvey extends HTMLElement {
     const originalHeader = doc.querySelector('header');
     if (originalHeader) {
       headerElement = originalHeader.cloneNode(true);
-      // *** OPTIMIZATION START: Ensure both action buttons exist for styling/visibility logic ***
-      let closeBtn = headerElement.querySelector('button[action="close"]');
+      // OPTIMIZATION START: Ensure both action buttons exist for styling/visibility logic
+      let closeBtn = headerElement.querySelector('.survey-close-button');
       if (!closeBtn) {
           closeBtn = document.createElement('button');
           closeBtn.setAttribute('action', 'close');
@@ -437,7 +440,7 @@ class AdlSurvey extends HTMLElement {
           headerElement.appendChild(closeBtn); // Append if missing
       }
 
-      let collapseBtn = headerElement.querySelector('button[action="collapse"]');
+      let collapseBtn = headerElement.querySelector('.survey-collapse-button');
       if (!collapseBtn) {
           collapseBtn = document.createElement('button');
           collapseBtn.setAttribute('action', 'collapse');
@@ -447,7 +450,7 @@ class AdlSurvey extends HTMLElement {
           collapseBtn.setAttribute('aria-label', 'Toggle Survey');
           headerElement.appendChild(collapseBtn); // Append if missing
       }
-      // *** OPTIMIZATION END ***
+      // OPTIMIZATION END 
     } else {
       console.warn("AdlSurvey render: Original HTML missing <header>, adding default.");
       headerElement = document.createElement('header');
@@ -500,9 +503,9 @@ class AdlSurvey extends HTMLElement {
 
     // Append the fully constructed container
     this.shadowRoot.appendChild(container);
-
+*/
     // --- Question Cloning ---
-    const originalScales = doc.querySelectorAll('.question');
+    /*const originalScales = this.shadowRoot.querySelectorAll('.question');
     console.log(`AdlSurvey render: Found ${originalScales.length} original .question elements.`);
     this.questions = [];
     this.questionMap = {};
@@ -510,7 +513,8 @@ class AdlSurvey extends HTMLElement {
       const clonedScale = originalScale.cloneNode(true);
       const questionId = clonedScale.getAttribute('question-id');
       // Insert cloned questions *before* the thanks div within the questionsContainer
-      questionsContainer.insertBefore(clonedScale, thanksDiv);
+      //questionsContainer.insertBefore(clonedScale, thanksDiv);
+      
       this.questions.push(clonedScale);
       if (questionId) {
         this.questionMap[questionId] = clonedScale;
@@ -518,7 +522,16 @@ class AdlSurvey extends HTMLElement {
         console.warn("AdlSurvey render: LikertScale in original HTML missing 'question-id'.", originalScale);
       }
     });
-    console.log(`AdlSurvey render: Cloned ${this.questions.length} questions.`);
+    console.log(`AdlSurvey render: Cloned ${this.questions.length} questions.`);*/
+    this.shadowRoot.querySelectorAll('.question').forEach(question => {
+      const questionId = question.getAttribute('question-id');
+      this.questions.push(question);
+      if (questionId) {
+        this.questionMap[questionId] = question;
+      } else {
+        console.warn("AdlSurvey render: LikertScale in original HTML missing 'question-id'.", question);
+      }
+    });
 
     // --- Attach Listeners ---
     this.attachActionListeners(); // Attaches to buttons based on action attribute
@@ -543,8 +556,8 @@ class AdlSurvey extends HTMLElement {
 
   // --- Helper to Attach Listeners based on 'action' attribute ---
   attachActionListeners = () => {
-    const closeBtn = this.shadowRoot.querySelector('button[action="close"]');
-    const collapseBtn = this.shadowRoot.querySelector('button[action="collapse"]');
+    const closeBtn = this.shadowRoot.querySelector('.survey-close-button');
+    const collapseBtn = this.shadowRoot.querySelector('.survey-collapse-button');
 
     // Remove potentially existing listeners before adding (safer if render logic changes)
     if(closeBtn) closeBtn.removeEventListener('click', this.closeSurvey);
@@ -563,8 +576,8 @@ class AdlSurvey extends HTMLElement {
 
   // --- Helper to Show/Hide Correct Button based on Theme ---
   updateButtonVisibility = () => {
-    const closeBtn = this.shadowRoot.querySelector('button[action="close"]');
-    const collapseBtn = this.shadowRoot.querySelector('button[action="collapse"]');
+    const closeBtn = this.shadowRoot.querySelector('.survey-close-button');
+    const collapseBtn = this.shadowRoot.querySelector('.survey-collapse-button');
     // If buttons aren't found, something is wrong with render, but add guards anyway
     if (!closeBtn || !collapseBtn) {
         console.warn("updateButtonVisibility: Action buttons not found in header.");
