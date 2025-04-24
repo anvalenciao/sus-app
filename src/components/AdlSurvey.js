@@ -1,11 +1,11 @@
 class AdlSurvey extends HTMLElement {
   static get observedAttributes() {
     return [
-      'theme', 'questions-per-page', 'z-index', 'position', 
+      'theme', 'questions-per-page', 'z-index', 'position',
       'color-text', 'color-background', 'color-button-text',
-      'color-button-background', 'color-scale-text',
-      'color-scale-background', 'color-scale-border',
-      'color-progress-track', 'color-progress-bar'
+      'color-button-background', 'color-progress-track', 'color-progress-bar',
+      'color-question-button-text', 'color-question-button-background',
+      'color-question-button-border'
     ];
   }
 
@@ -51,7 +51,7 @@ class AdlSurvey extends HTMLElement {
     console.log("AdlSurvey connectedCallback");
 
     // Add component-specific listeners
-    this.addEventListener("survey:question", this.handleEvent);
+    this.addEventListener("adl-survey:question", this.handleEvent);
 
     // Parse attributes that might affect rendering
     this.parseAttributes();
@@ -72,7 +72,7 @@ class AdlSurvey extends HTMLElement {
 
     // Clean up global/document listeners
     document.removeEventListener("DOMContentLoaded", this.domReadyCallback);
-    this.removeEventListener("survey:question", this.handleEvent);
+    this.removeEventListener("adl-survey:question", this.handleEvent);
     // Note: Shadow DOM listeners (like button clicks) are removed automatically when shadow DOM is cleared or element destroyed.
   }
 
@@ -80,11 +80,11 @@ class AdlSurvey extends HTMLElement {
     return {
       color: "#000",
       backgroundColor: "#fff",
-      buttonColor: "#fff",
-      buttonBackgroundColor: "#626a84", // Default from original CSS
-      buttonScaleColor: "#000",
-      buttonScaleBackgroundColor: "#fff",
-      buttonScaleBorderColor: "#8c9394",
+      buttonColor: "#000",
+      buttonBackgroundColor: "#626a84",
+      buttonQuestionColor: "#000",
+      buttonQuestionBackgroundColor: "#fff",
+      buttonQuestionBorderColor: "#626a84",
       progressBarTrackColor: "#e0e2e8",
       progressBarColor: "#626a84"
     };
@@ -109,50 +109,51 @@ class AdlSurvey extends HTMLElement {
 
       /* General Styles */
       :host{display:none}:host(:defined){display:block}
-      :host .btn{background-color:var(--adl-survey-button-background-color, #626a84);border:0;border-radius:8px;box-shadow:none;color:var(--adl-survey-button-color, #fff);float:none;font-size:14px;font-weight:600;height:40px;margin:0;min-height:initial;min-width:initial;outline:0;padding:8px 24px;text-decoration:none;transition:opacity .15s ease-in-out;vertical-align:top;width:auto;zoom:1}
+      :host .btn{background-color:var(--adl-survey-button-background-color);border:0;border-radius:8px;box-shadow:none;color:var(--adl-survey-button-color, #fff);float:none;font-size:14px;font-weight:600;height:40px;margin:0;min-height:initial;min-width:initial;outline:0;padding:8px 24px;text-decoration:none;transition:opacity .15s ease-in-out;vertical-align:top;width:auto;zoom:1}
       :host .btn-primary:hover{opacity: 0.77}
       :host .btn-primary[disabled]{pointer-events:none;opacity:.33}
 
       :host header{padding:1rem;display:flex;flex-shrink:0;align-items:center;justify-content:space-between}
-      :host header h2{font-size:1.375em;font-weight:500;line-height:1;margin-right:1em;color:var(--adl-survey-color,#000)}
-      :host main{background:var(--adl-survey-background-color,#fff);border-radius:5px 5px 0 0;box-shadow:0 0 7px 0 #0000004d;font-size:.75em;margin:0 auto;min-width:300px;font-family:inherit}
+      :host header h2{font-size:1.375em;font-weight:500;line-height:1;margin-right:1em;color:var(--adl-survey-color)}
+      :host main{background:var(--adl-survey-background-color);border-radius:5px 5px 0 0;box-shadow:0 0 7px 0 #0000004d;font-size:.75em;margin:0 auto;min-width:300px;font-family:inherit}
       :host footer{position:relative;align-items:center;display:flex;flex-direction:row-reverse;gap:12px;justify-content:space-between;padding:.75em;padding-top:calc(0.75em + 4px);width:100%}
-      :host footer::after{content:'';position:absolute;top:0;left:0;width:100%;height:4px;background-color:var(--adl-survey-progress-track-color,#e0e2e8);z-index:1}
-      :host footer::before{content:'';position:absolute;top:0;left:0;width:var(--adl-survey-progress-width,0%);height:4px;background-color:var(--adl-survey-progress-bar-color,var(--adl-survey-button-background-color,#008acc));z-index:2;transition:width .3s ease-in-out}
+      :host footer::after{content:'';position:absolute;top:0;left:0;width:100%;height:4px;background-color:var(--adl-survey-progress-track-color);z-index:1}
+      :host footer::before{content:'';position:absolute;top:0;left:0;width:var(--adl-survey-progress-width,0%);height:4px;background-color:var(--adl-survey-progress-bar-color,var(--adl-survey-button-background-color));z-index:2;transition:width .3s ease-in-out}
 
       :host .logo{display:flex;align-items:center;gap:12px}
       :host .pagination{display:flex;align-items:center;gap:12px}
       :host .pagination-info{font-size:0.9em;color:#666}
 
+      :host .thanks{color:var(--adl-survey-color);font-size:1.375em;font-weight:600;text-align:center;padding:1em 0.5em}
+
       :host .survey-close-button,:host .survey-collapse-button{position:absolute;top:0;right:0;display:block;width:40px;height:40px;font-size:0;transition:transform 150ms,opacity .15s ease-in-out;margin:.5rem;border:0;padding:0;background:0 0;cursor:pointer;opacity:.5;box-sizing:border-box}
       :host .survey-close-button:hover,:host .survey-collapse-button:hover{opacity:1}
 
-      :host .survey-close-button:after,:host .survey-close-button:before{position:absolute;top:50%;left:50%;width:2px;height:18px;content:'';background:var(--adl-survey-color,#000)}
+      :host .survey-close-button:after,:host .survey-close-button:before{position:absolute;top:50%;left:50%;width:2px;height:18px;content:'';background:var(--adl-survey-color)}
       :host .survey-close-button:before{transform:rotate(45deg) translate(-50%,-50%);transform-origin:top left}
       :host .survey-close-button:after{transform:rotate(-45deg) translate(-50%,-50%);transform-origin:top left}
       :host .survey-close-button:hover{transform:rotateZ(90deg)}
 
       :host .survey-collapse-button{transition:transform .2s ease-in-out,opacity .15s ease-in-out;transform:rotate(180deg)}
-      :host .survey-collapse-button:before,:host .survey-collapse-button:after{position:absolute;top:50%;left:50%;content:'';width:10px;height:2px;background:var(--adl-survey-color,#000);transform-origin:center}
+      :host .survey-collapse-button:before,:host .survey-collapse-button:after{position:absolute;top:50%;left:50%;content:'';width:10px;height:2px;background:var(--adl-survey-color);transform-origin:center}
       :host .survey-collapse-button:before{transform:translate(-90%,-50%) rotate(-45deg)}
       :host .survey-collapse-button:after{transform:translate(-30%,-50%) rotate(45deg)}
 
       /* --- Modal Theme --- */
-      :host([theme="modal"]){z-index:var(--adl-survey-z-index,999);position:fixed;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:#0009;display:flex;align-items:center;justify-content:center}
+      :host([theme="modal"]){z-index:var(--adl-survey-z-index);position:fixed;left:0;top:0;width:100%;height:100%;overflow:auto;background-color:#0009;display:flex;align-items:center;justify-content:center}
       :host([theme="modal"][position="left"]){justify-content:flex-start}
       :host([theme="modal"][position="right"]){justify-content:flex-end}
       :host([theme="modal"]) section{min-height:110px;padding:0 1em}
       :host([theme="modal"]) main{border-radius:8px;width:384px;animation:scaleUp .5s cubic-bezier(.165,.84,.44,1) forwards;margin:0 1em}
-      :host([theme="modal"]) .thanks{font-size:1.375em;font-weight:600;text-align:center;padding:2em 1em}
 
       /* --- Popup Theme --- */
       :host([collapsed]) section,:host([collapsed]) footer{display:none}
       :host([collapsed]) .survey-collapse-button{transform:rotate(0deg)}
 
-      :host([theme="popup"]){position:fixed;z-index:var(--adl-survey-z-index,999);bottom:0;width:320px;max-width:calc(100% - 2em);animation:slideToTop .5s ease-out forwards;right:1em;left:auto}
+      :host([theme="popup"]){position:fixed;z-index:var(--adl-survey-z-index);bottom:0;width:320px;max-width:calc(100% - 2em);animation:slideToTop .5s ease-out forwards;right:1em;left:auto}
       :host([theme="popup"][position="left"]){left:1em;right:auto}
       :host([theme="popup"][position="center"]){left:50%;right:auto;transform:translateX(-50%);animation-name:slideToTopCenter}
-      :host([theme="popup"]) main{width:100%;border-radius:8px 8px 0 0;box-shadow:0 2px 10px 0 #0000004d;background:var(--adl-survey-background-color,#fff);overflow:hidden}
+      :host([theme="popup"]) main{width:100%;border-radius:8px 8px 0 0;box-shadow:0 2px 10px 0 #0000004d;background:var(--adl-survey-background-color);overflow:hidden}
       :host([theme="popup"]) section{padding:0 1em 1rem 1rem;min-height:80px}
       :host([theme="popup"]) footer{padding:.75em 1em}
       :host([theme="popup"]) .survey-collapse-button{margin:.5rem}
@@ -272,9 +273,9 @@ class AdlSurvey extends HTMLElement {
     newColors.backgroundColor = this.getAttribute('color-background') || newColors.backgroundColor;
     newColors.buttonColor = this.getAttribute('color-button-text') || newColors.buttonColor;
     newColors.buttonBackgroundColor = this.getAttribute('color-button-background') || newColors.buttonBackgroundColor;
-    newColors.buttonScaleColor = this.getAttribute('color-scale-text') || newColors.buttonScaleColor;
-    newColors.buttonScaleBackgroundColor = this.getAttribute('color-scale-background') || newColors.buttonScaleBackgroundColor;
-    newColors.buttonScaleBorderColor = this.getAttribute('color-scale-border') || newColors.buttonScaleBorderColor;
+    newColors.buttonQuestionColor = this.getAttribute('color-question-button-text') || newColors.buttonQuestionColor;
+    newColors.buttonQuestionBackgroundColor = this.getAttribute('color-question-button-background') || newColors.buttonQuestionBackgroundColor;
+    newColors.buttonQuestionBorderColor = this.getAttribute('color-question-button-border') || newColors.buttonQuestionBorderColor;
     newColors.progressBarTrackColor = this.getAttribute('color-progress-track') || newColors.progressBarTrackColor;
     newColors.progressBarColor = this.getAttribute('color-progress-bar') || newColors.progressBarColor;
     this.colors = newColors;
@@ -304,17 +305,20 @@ class AdlSurvey extends HTMLElement {
       this.originalHTML = this.innerHTML; // Capture HTML
       this.innerHTML = '';
 
-      // Parse ALL attributes initially (including colors) BEFORE rendering
-      // This ensures colors is populated before applyStyles runs
-      this.parseAttributes(); // Handles non-color like questions-per-page
-      this.parseColorAttributes(); // Parse initial color attributes
+      // 1. Parse ALL attributes first
+      this.parseAttributes();
+      this.parseColorAttributes();
 
-      // Render the shadow DOM structure
-      this.render();
+      // --- CHANGE ORDER START ---
+      // 2. Apply styles that DEFINE the CSS variables BEFORE rendering children
+      console.log("AdlSurvey tryInitialRender: Calling applyStyles BEFORE initial render.");
+      this.applyStyles(); // <<< CALL applyStyles FIRST
 
-      // Apply colors AFTER shadow DOM is built by render()
-      console.log("AdlSurvey tryInitialRender: Calling applyStyles after initial render.");
-      this.applyStyles(); // <<< THIS IS THE KEY INITIAL CALL
+      // 3. Render the shadow DOM structure (which connects child components)
+      this.render(); // <<< CALL render SECOND
+      // --- CHANGE ORDER END ---
+
+      // 4. Update progress bar after render is complete
       this.updateProgressBar();
 
     } else {
@@ -374,9 +378,9 @@ class AdlSurvey extends HTMLElement {
           --adl-survey-background-color: ${colors.backgroundColor};
           --adl-survey-button-color: ${colors.buttonColor};
           --adl-survey-button-background-color: ${colors.buttonBackgroundColor};
-          --adl-survey-button-scale-color: ${colors.buttonScaleColor};
-          --adl-survey-button-scale-background-color: ${colors.buttonScaleBackgroundColor};
-          --adl-survey-button-scale-border-color: ${colors.buttonScaleBorderColor};
+          --adl-survey-question-button-color: ${colors.buttonQuestionColor};
+          --adl-survey-question-button-background-color: ${colors.buttonQuestionBackgroundColor};
+          --adl-survey-question-button-border-color: ${colors.buttonQuestionBorderColor};
           --adl-survey-progress-track-color: ${colors.progressBarTrackColor};
           --adl-survey-progress-bar-color: ${colors.progressBarColor};
 
@@ -414,115 +418,6 @@ class AdlSurvey extends HTMLElement {
     }
     this.shadowRoot.innerHTML = this.originalHTML;
 
-/*
-    this.shadowRoot.innerHTML = ''; // Clear previous content
-
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(this.originalHTML, 'text/html');
-
-    const container = document.createElement('div');
-    container.className = 'container';
-
-    // --- Header ---
-    let headerElement;
-    const originalHeader = doc.querySelector('header');
-    if (originalHeader) {
-      headerElement = originalHeader.cloneNode(true);
-      // OPTIMIZATION START: Ensure both action buttons exist for styling/visibility logic
-      let closeBtn = headerElement.querySelector('.survey-close-button');
-      if (!closeBtn) {
-          closeBtn = document.createElement('button');
-          closeBtn.setAttribute('action', 'close');
-          // Add default classes/parts if needed, though CSS targets [action="close"]
-          // closeBtn.className = 'close close-button-default';
-          // closeBtn.part = 'button close-button';
-          closeBtn.setAttribute('aria-label', 'Close Survey');
-          headerElement.appendChild(closeBtn); // Append if missing
-      }
-
-      let collapseBtn = headerElement.querySelector('.survey-collapse-button');
-      if (!collapseBtn) {
-          collapseBtn = document.createElement('button');
-          collapseBtn.setAttribute('action', 'collapse');
-          // Add default classes/parts if needed
-          // collapseBtn.className = 'close collapse-button-default'; // Base 'close' class might be confusing here
-          // collapseBtn.part = 'button collapse-button';
-          collapseBtn.setAttribute('aria-label', 'Toggle Survey');
-          headerElement.appendChild(collapseBtn); // Append if missing
-      }
-      // OPTIMIZATION END 
-    } else {
-      console.warn("AdlSurvey render: Original HTML missing <header>, adding default.");
-      headerElement = document.createElement('header');
-      // Add default content INCLUDING BOTH buttons
-      headerElement.innerHTML = `<h2>Survey</h2>
-                                 <button action="close" aria-label="Close Survey"></button>
-                                 <button action="collapse" aria-label="Toggle Survey"></button>`;
-    }
-    container.appendChild(headerElement);
-
-
-    // --- Main (Questions Container) ---
-    let questionsContainer;
-    const main = doc.querySelector('main.questions-container');
-    if (main) {
-      questionsContainer = main.cloneNode(true);
-      // Clear placeholder scales from the template clone
-      questionsContainer.querySelectorAll('.question').forEach(el => el.remove());
-      container.appendChild(questionsContainer);
-    } else {
-      console.warn("AdlSurvey render: Original HTML missing <main class='questions-container'>, adding default.");
-      questionsContainer = document.createElement('main');
-      questionsContainer.className = 'questions-container';
-      container.appendChild(questionsContainer);
-    }
-
-    // Ensure 'thanks' div exists within questionsContainer
-    let thanksDiv = questionsContainer.querySelector('.thanks');
-    if (!thanksDiv) {
-      thanksDiv = document.createElement('div');
-      thanksDiv.className = 'thanks hidden';
-      thanksDiv.innerHTML = '<p>¡Gracias por completar la encuesta!</p><p>Tu opinión es muy importante para nosotros.</p>';
-      questionsContainer.appendChild(thanksDiv);
-    } else {
-      thanksDiv.classList.add('hidden'); // Ensure it starts hidden
-    }
-
-    // --- Footer ---
-    const footer = doc.querySelector('footer');
-    if (footer) {
-      container.appendChild(footer.cloneNode(true));
-    } else {
-      console.warn("AdlSurvey render: Original HTML missing <footer>, adding default.");
-      const defaultFooter = document.createElement('footer');
-      defaultFooter.innerHTML = `
-            <div class="navigation-controls"><button class="btn btn-primary btn-next" type="button" disabled>Siguiente</button></div>
-            <div class="pagination"><span class="pagination-info"></span></div>`;
-      container.appendChild(defaultFooter);
-    }
-
-    // Append the fully constructed container
-    this.shadowRoot.appendChild(container);
-*/
-    // --- Question Cloning ---
-    /*const originalScales = this.shadowRoot.querySelectorAll('.question');
-    console.log(`AdlSurvey render: Found ${originalScales.length} original .question elements.`);
-    this.questions = [];
-    this.questionMap = {};
-    originalScales.forEach(originalScale => {
-      const clonedScale = originalScale.cloneNode(true);
-      const questionId = clonedScale.getAttribute('question-id');
-      // Insert cloned questions *before* the thanks div within the questionsContainer
-      //questionsContainer.insertBefore(clonedScale, thanksDiv);
-      
-      this.questions.push(clonedScale);
-      if (questionId) {
-        this.questionMap[questionId] = clonedScale;
-      } else {
-        console.warn("AdlSurvey render: LikertScale in original HTML missing 'question-id'.", originalScale);
-      }
-    });
-    console.log(`AdlSurvey render: Cloned ${this.questions.length} questions.`);*/
     this.shadowRoot.querySelectorAll('.question').forEach(question => {
       const questionId = question.getAttribute('question-id');
       this.questions.push(question);
@@ -537,80 +432,29 @@ class AdlSurvey extends HTMLElement {
     this.attachActionListeners(); // Attaches to buttons based on action attribute
     const nextBtn = this.shadowRoot.querySelector('.btn-next');
     if (nextBtn) {
-         // Ensure listener isn't added multiple times if render is called again (though clearing innerHTML helps)
-         // Consider removing listener before adding if issues arise, but usually okay with full render.
-         nextBtn.addEventListener('click', this.goToNextPage);
+      // Ensure listener isn't added multiple times if render is called again (though clearing innerHTML helps)
+      // Consider removing listener before adding if issues arise, but usually okay with full render.
+      nextBtn.addEventListener('click', this.goToNextPage);
     } else {
-        console.warn("AdlSurvey render: '.btn-next' not found in footer.");
+      console.warn("AdlSurvey render: '.btn-next' not found in footer.");
     }
     console.log("AdlSurvey render: Attached listeners to shadow DOM buttons (if found).");
 
     // --- Initialize Visibility & State ---
     this.updateButtonVisibility(); // <<< Now crucial to hide the irrelevant action button
     this.updateQuestionVisibility();
-    //this.updatePaginationInfo();
     this.updateNextButtonState();
 
     console.log("AdlSurvey render: Render process complete.");
   }
 
-  // --- Helper to Attach Listeners based on 'action' attribute ---
-  attachActionListeners = () => {
-    const closeBtn = this.shadowRoot.querySelector('.survey-close-button');
-    const collapseBtn = this.shadowRoot.querySelector('.survey-collapse-button');
-
-    // Remove potentially existing listeners before adding (safer if render logic changes)
-    if(closeBtn) closeBtn.removeEventListener('click', this.closeSurvey);
-    if(collapseBtn) collapseBtn.removeEventListener('click', this.togglePopupCollapse);
-
-    // Add listeners
-    if (closeBtn) {
-      closeBtn.addEventListener('click', this.closeSurvey);
-      console.log("AdlSurvey attachActionListeners: Attached closeSurvey to", closeBtn);
-    }
-    if (collapseBtn) {
-      collapseBtn.addEventListener('click', this.togglePopupCollapse);
-      console.log("AdlSurvey attachActionListeners: Attached togglePopupCollapse to", collapseBtn);
-    }
-  }
-
-  // --- Helper to Show/Hide Correct Button based on Theme ---
-  updateButtonVisibility = () => {
-    const closeBtn = this.shadowRoot.querySelector('.survey-close-button');
-    const collapseBtn = this.shadowRoot.querySelector('.survey-collapse-button');
-    // If buttons aren't found, something is wrong with render, but add guards anyway
-    if (!closeBtn || !collapseBtn) {
-        console.warn("updateButtonVisibility: Action buttons not found in header.");
-        return;
-    }
-
-    const isPopup = this.getAttribute('theme') === 'popup';
-
-    // Hide the button that is NOT relevant for the current theme
-    closeBtn.hidden = isPopup;
-    collapseBtn.hidden = !isPopup;
-
-    console.log(`updateButtonVisibility: Popup=${isPopup}, Close Hidden=${closeBtn.hidden}, Collapse Hidden=${collapseBtn.hidden}`);
-  }
-
-  // --- Helper to Sync Attribute ---
-  updateCollapsedAttribute() {
-    console.log(this.isPopupCollapsed);
-    if (this.isPopupCollapsed) {
-      this.setAttribute('collapsed', ''); // Set boolean attribute
-    } else {
-      this.removeAttribute('collapsed');
-    }
-    // Optional: Dispatch an event when state changes
-    // this.dispatchEvent(new CustomEvent('adl-survey:toggled', { detail: { collapsed: this.isPopupCollapsed } }));
-  }
 
 
   // --- Event Handlers ---
   // Renamed from handleEvent to be more specific
   // Optional: Rename this.data for clarity
   handleEvent = (event) => {
-    if (event.type === "survey:question" && event.detail) {
+    if (event.type === "adl-survey:question" && event.detail) {
       console.log(`AdlSurvey handleEvent: Received answer for ${event.detail.questionId}`, event.detail);
       this.answers[event.detail.questionId] = event.detail.value;
       this.updateNextButtonState();
@@ -655,7 +499,6 @@ class AdlSurvey extends HTMLElement {
 
             // --- Update State After Jump ---
             this.currentPage = -1; // Signal we are off the standard page track
-            //this.updatePaginationInfo(); // Update page/question number display
             this.updateNextButtonState(); // Check requirements for the NEWLY visible question
             this.updateProgressBar(); // <<< UPDATE PROGRESS BAR after jump
             hasConditionalJumpHappened = true;
@@ -704,7 +547,6 @@ class AdlSurvey extends HTMLElement {
         // --- Go to Next Standard Page ---
         console.log(`AdlSurvey goToNextPage: Advancing display to page ${this.currentPage + 1} / ${totalPages}`);
         this.updateQuestionVisibility(); // Show the questions for the new standard page
-        //this.updatePaginationInfo(); // Update page number display
         this.updateNextButtonState(); // Check requirements for the new page's questions
         this.updateProgressBar(); // <<< UPDATE PROGRESS BAR after standard page advance
       } else {
@@ -712,7 +554,6 @@ class AdlSurvey extends HTMLElement {
         console.log("AdlSurvey goToNextPage: Reached end of standard survey flow.");
         this.isSurveyCompleted = true;
         this.updateQuestionVisibility(); // Show 'thanks' message, hide questions
-        //this.updatePaginationInfo(); // Update display to show completion
         this.updateNextButtonState(); // Update button text to 'Cerrar' and enable it
         this.updateProgressBar(); // <<< UPDATE PROGRESS BAR on completion (sets to 100%)
       }
@@ -767,33 +608,6 @@ class AdlSurvey extends HTMLElement {
     }
     // Update button state based on newly visible questions
     // this.updateNextButtonState(); // Called by goToNextPage after visibility update
-  }
-
-  updatePaginationInfo = () => {
-    const paginationInfo = this.shadowRoot.querySelector('.pagination-info');
-    if (!paginationInfo) return; // Exit if element not found
-
-    let text = '';
-    if (this.isSurveyCompleted) {
-      text = 'Encuesta completada';
-    } else if (this.currentPage === -1) {
-      // Find the currently visible question (should be only one after a jump)
-      const visibleQ = this.questions.find(q => !q.classList.contains('hidden'));
-      if (visibleQ) {
-        const qId = visibleQ.getAttribute('question-id');
-        const index = this.questions.findIndex(q => q === visibleQ);
-        text = `Pregunta ${index + 1} de ${this.questions.length} (ID: ${qId})`;
-      } else {
-        text = `Navegación personalizada`; // Fallback
-      }
-    } else {
-      const totalPages = Math.ceil(this.questions.length / this.questionsPerPage);
-      const pageNum = this.currentPage + 1;
-      // Ensure pageNum doesn't exceed totalPages visually
-      text = `Página ${Math.min(pageNum, totalPages)} de ${totalPages}`;
-    }
-    console.log("AdlSurvey updatePaginationInfo: Setting text to:", text);
-    paginationInfo.textContent = text;
   }
 
   updateNextButtonState = () => {
@@ -869,20 +683,12 @@ class AdlSurvey extends HTMLElement {
     // Although disconnectedCallback handles some cleanup,
     // explicit cleanup here can be useful if the element isn't fully removed immediately.
     // Remove document/global listeners if not already handled by disconnectedCallback firing
-    document.removeEventListener("survey:question", this.handleEvent);
+    document.removeEventListener("adl-survey:question", this.handleEvent);
     document.removeEventListener("DOMContentLoaded", this.domReadyCallback); // Should already be removed
 
   }
 
   togglePopupCollapse = () => {
-    // Only makes sense for popup theme
-    /*if (this.getAttribute('theme') !== 'popup') {
-      console.warn("AdlSurvey togglePopupCollapse: Called on non-popup theme. Ignoring.");
-      // Optionally, call full closeSurvey as fallback?
-      // this.closeSurvey();
-      return;
-    }*/
-
     this.isPopupCollapsed = !this.isPopupCollapsed;
     console.log(`AdlSurvey togglePopupCollapse: Setting collapsed state to ${this.isPopupCollapsed}`);
 
@@ -902,7 +708,56 @@ class AdlSurvey extends HTMLElement {
     }
   }
 
+  // --- Helper to Sync Attribute ---
+  updateCollapsedAttribute() {
+    console.log(this.isPopupCollapsed);
+    if (this.isPopupCollapsed) {
+      this.setAttribute('collapsed', ''); // Set boolean attribute
+    } else {
+      this.removeAttribute('collapsed');
+    }
+    // Optional: Dispatch an event when state changes
+    // this.dispatchEvent(new CustomEvent('adl-survey:toggled', { detail: { collapsed: this.isPopupCollapsed } }));
+  }
 
+  // --- Helper to Attach Listeners based on 'action' attribute ---
+  attachActionListeners = () => {
+    const closeBtn = this.shadowRoot.querySelector('.survey-close-button');
+    const collapseBtn = this.shadowRoot.querySelector('.survey-collapse-button');
+
+    // Remove potentially existing listeners before adding (safer if render logic changes)
+    if (closeBtn) closeBtn.removeEventListener('click', this.closeSurvey);
+    if (collapseBtn) collapseBtn.removeEventListener('click', this.togglePopupCollapse);
+
+    // Add listeners
+    if (closeBtn) {
+      closeBtn.addEventListener('click', this.closeSurvey);
+      console.log("AdlSurvey attachActionListeners: Attached closeSurvey to", closeBtn);
+    }
+    if (collapseBtn) {
+      collapseBtn.addEventListener('click', this.togglePopupCollapse);
+      console.log("AdlSurvey attachActionListeners: Attached togglePopupCollapse to", collapseBtn);
+    }
+  }
+
+  // --- Helper to Show/Hide Correct Button based on Theme ---
+  updateButtonVisibility = () => {
+    const closeBtn = this.shadowRoot.querySelector('.survey-close-button');
+    const collapseBtn = this.shadowRoot.querySelector('.survey-collapse-button');
+    // If buttons aren't found, something is wrong with render, but add guards anyway
+    if (!closeBtn || !collapseBtn) {
+      console.warn("updateButtonVisibility: Action buttons not found in header.");
+      return;
+    }
+
+    const isPopup = this.getAttribute('theme') === 'popup';
+
+    // Hide the button that is NOT relevant for the current theme
+    closeBtn.hidden = isPopup;
+    collapseBtn.hidden = !isPopup;
+
+    console.log(`updateButtonVisibility: Popup=${isPopup}, Close Hidden=${closeBtn.hidden}, Collapse Hidden=${collapseBtn.hidden}`);
+  }
 }
 
 // Define custom elements (ensure LikertScale is defined before AdlSurvey if in separate files)
@@ -911,5 +766,4 @@ customElements.define("adl-survey", AdlSurvey);
 /*
 customElements.whenDefined('adl-survey').then(function() { 
   console.log('adl-survey is defined');
-  // Additional logic here if needed
 });*/

@@ -1,4 +1,8 @@
 class LikertScale extends HTMLElement {
+  static get observedAttributes() {
+    return ['question', 'min', 'max', 'low-score-label', 'high-score-label', 'required', 'question-id'];
+  }
+
   constructor() {
     super();
     this.attachShadow({ mode: 'open' });
@@ -8,16 +12,16 @@ class LikertScale extends HTMLElement {
     // Create styles once
     const styles = /* CSS */`
       :host {display:block;}
-      :host h3{font-weight:700;line-height:1.5em;font-size:1em;margin:0 0 0.5rem 0;overflow-wrap:break-word}
+      :host h3{font-weight:700;line-height:1.5em;font-size:1em;margin:0 0 0.5rem 0;overflow-wrap:break-word;color:var(--adl-survey-color)}
       :host .scale{display:flex;flex-direction:column;}
       :host .options{align-items:center;display:flex;flex-direction:row;gap:5px;height:45px;justify-content:space-between}
-      :host label{color:var(--adl-survey-color-text);display:inline-block;flex:1;font-size:15px;height:40px;margin:0;padding:8px 0;width:auto;}
+      :host label{color:var(--adl-survey-question-button-color);display:inline-block;flex:1;font-size:15px;height:40px;margin:0;padding:8px 0;width:auto;}
       :host input:checked+label span{background-color:var(--adl-survey-button-background-color);color:var(--adl-survey-button-color);border:1px solid var(--adl-survey-button-background-color);}
-      :host label span:hover{border:1px solid var(--adl-survey-button-background-color);box-shadow: 0 0 3px var(--adl-survey-button-background-color);}
+      :host label span:hover{border:1px solid var(--adl-survey-button-background-color);box-shadow: 0 0 3px var(--adl-survey-question-button-background-color);}
       :host input{height:0;opacity:0;position:absolute;width:0;}
-      :host label span{background-color:var(--adl-survey-button-scale-background-color, #e4e);border:1px solid var(--adl-survey-button-scale-border-color);border-radius:12px;clear:none;color:inherit;cursor:pointer;display:block;float:left;font-size:inherit;list-style-image:none;list-style-type:none;padding:4px 0 5px 0;transition:background-color .15s ease-in-out, box-shadow .2s;text-align:center;text-indent:0;width:100%;}
+      :host label span{background-color:var(--adl-survey-question-button-background-color);border:1px solid var(--adl-survey-question-button-border-color);border-radius:12px;clear:none;color:inherit;cursor:pointer;display:block;float:left;font-size:inherit;list-style-image:none;list-style-type:none;padding:4px 0 5px 0;transition:background-color .15s ease-in-out, box-shadow .2s;text-align:center;text-indent:0;width:100%;}
       :host .labels{display:flex;justify-content:space-between;opacity:.7}
-      :host .labels span{font-size:.875em}
+      :host .labels span{font-size:.875em;color:var(--adl-survey-color)}
       :host([required]) h3::after {content: " *";color: red;}
     `;
     const css = new CSSStyleSheet();
@@ -33,7 +37,7 @@ class LikertScale extends HTMLElement {
       const nextQuestionId = this.getNextQuestionId();
       console.log(nextQuestionId);
 
-      const messageEvent = new CustomEvent("survey:question", {
+      const messageEvent = new CustomEvent("adl-survey:question", {
         detail: {
           value: event.target.value,
           required: this.isRequired(),
@@ -60,10 +64,6 @@ class LikertScale extends HTMLElement {
     radioButtons.forEach(radioButton => {
       radioButton.removeEventListener("change", this);
     });
-  }
-
-  static get observedAttributes() {
-    return ['question', 'min', 'max', 'low-score-label', 'high-score-label', 'required', 'question-id'];
   }
 
   attributeChangedCallback(name, oldValue, newValue) {
