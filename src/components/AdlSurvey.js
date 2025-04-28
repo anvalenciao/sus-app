@@ -90,6 +90,70 @@ class AdlSurvey extends HTMLElement {
     };
   }
 
+  parseColorAttributes = () => {
+    const newColors = { ...this.getDefaultColors() };
+    newColors.color = this.getAttribute('color-text') || newColors.color;
+    newColors.backgroundColor = this.getAttribute('color-background') || newColors.backgroundColor;
+    newColors.buttonColor = this.getAttribute('color-button-text') || newColors.buttonColor;
+    newColors.buttonBackgroundColor = this.getAttribute('color-button-background') || newColors.buttonBackgroundColor;
+    newColors.buttonQuestionColor = this.getAttribute('color-question-button-text') || newColors.buttonQuestionColor;
+    newColors.buttonQuestionBackgroundColor = this.getAttribute('color-question-button-background') || newColors.buttonQuestionBackgroundColor;
+    newColors.buttonQuestionBorderColor = this.getAttribute('color-question-button-border') || newColors.buttonQuestionBorderColor;
+    newColors.progressBarTrackColor = this.getAttribute('color-progress-track') || newColors.progressBarTrackColor;
+    newColors.progressBarColor = this.getAttribute('color-progress-bar') || newColors.progressBarColor;
+    this.colors = newColors;
+    console.log("AdlSurvey parseColorAttributes: Updated colors:", this.colors);
+    console.log("AdlSurvey parseColorAttributes: Parsed colors object:", JSON.stringify(this.colors));
+  }
+
+  applyStyles = () => { // Renaming to applyStyles might be more accurate now
+    if (!this.colors) {
+      console.log("AdlSurvey applyStyles: Skipping, no colors object found.");
+      return;
+    }
+    // Also ensure zIndex has been parsed (should be handled by initial parseAttributes)
+    console.log(`AdlSurvey applyStyles: Applying styles. Colors: ${JSON.stringify(this.colors)}, Z-Index: ${this.zIndex}`);
+
+    const colors = this.colors;
+    // Generate the CSS string including the z-index variable
+    const dynamicStyles = /* CSS */`
+        :host {
+          /* Color Variables */
+          --adl-survey-color: ${colors.color};
+          --adl-survey-background-color: ${colors.backgroundColor};
+          --adl-survey-button-color: ${colors.buttonColor};
+          --adl-survey-button-background-color: ${colors.buttonBackgroundColor};
+          --adl-survey-question-button-color: ${colors.buttonQuestionColor};
+          --adl-survey-question-button-background-color: ${colors.buttonQuestionBackgroundColor};
+          --adl-survey-question-button-border-color: ${colors.buttonQuestionBorderColor};
+          --adl-survey-progress-track-color: ${colors.progressBarTrackColor};
+          --adl-survey-progress-bar-color: ${colors.progressBarColor};
+
+          /* Z-Index Variable */
+          --adl-survey-z-index: ${this.zIndex};
+        }
+      `;
+    console.log("AdlSurvey applyStyles: Generated CSS:", dynamicStyles);
+
+    // Update or add the stylesheet (same logic as before)
+    // Maybe give this stylesheet a more specific purpose if you have multiple dynamic ones
+    const styleSheetKey = 'dynamic-styles'; // Give it a conceptual key
+    let sheet = this.shadowRoot.adoptedStyleSheets.find(s => s[styleSheetKey]);
+
+    if (sheet) {
+      console.log("AdlSurvey applyStyles: Replacing existing dynamic stylesheet.");
+      sheet.replaceSync(dynamicStyles);
+    } else {
+      console.log("AdlSurvey applyStyles: Adding new dynamic stylesheet.");
+      sheet = new CSSStyleSheet();
+      sheet[styleSheetKey] = true; // Mark the sheet
+      sheet.replaceSync(dynamicStyles);
+      // Add this new sheet to the array of adopted sheets
+      this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, sheet];
+    }
+    console.log("AdlSurvey applyStyles: Stylesheet updated/added.");
+  }
+
   // --- Stylesheet Adoption ---
   adoptStyles = () => {
     const styles = /* CSS */`
@@ -216,17 +280,9 @@ class AdlSurvey extends HTMLElement {
     if (oldValue !== newValue) {
       console.log(`AdlSurvey attributeChangedCallback: ${name} changed from ${oldValue} to ${newValue}`);
 
-      let needsColorUpdate = false; // Renaming applyColors -> applyStyles might be good
+      let needsColorUpdate = false;
       let needsRender = false;
       let needsAttributeParse = false;
-
-      // ... existing logic ...
-      if (name === 'theme') {
-        // Update button visibility if theme changes after initial render
-        if (this.shadowRoot.childElementCount > 0 && this.originalHTML !== null) {
-          this.updateButtonVisibility();
-        }
-      }
 
       if (name.startsWith('color-')) {
         this.parseColorAttributes();
@@ -267,20 +323,39 @@ class AdlSurvey extends HTMLElement {
     }
   }
 
-  parseColorAttributes = () => {
-    const newColors = { ...this.getDefaultColors() };
-    newColors.color = this.getAttribute('color-text') || newColors.color;
-    newColors.backgroundColor = this.getAttribute('color-background') || newColors.backgroundColor;
-    newColors.buttonColor = this.getAttribute('color-button-text') || newColors.buttonColor;
-    newColors.buttonBackgroundColor = this.getAttribute('color-button-background') || newColors.buttonBackgroundColor;
-    newColors.buttonQuestionColor = this.getAttribute('color-question-button-text') || newColors.buttonQuestionColor;
-    newColors.buttonQuestionBackgroundColor = this.getAttribute('color-question-button-background') || newColors.buttonQuestionBackgroundColor;
-    newColors.buttonQuestionBorderColor = this.getAttribute('color-question-button-border') || newColors.buttonQuestionBorderColor;
-    newColors.progressBarTrackColor = this.getAttribute('color-progress-track') || newColors.progressBarTrackColor;
-    newColors.progressBarColor = this.getAttribute('color-progress-bar') || newColors.progressBarColor;
-    this.colors = newColors;
-    console.log("AdlSurvey parseColorAttributes: Updated colors:", this.colors);
-    console.log("AdlSurvey parseColorAttributes: Parsed colors object:", JSON.stringify(this.colors));
+  parseAttributes = () => {
+    // --- Questions Per Page ---
+    if (this.hasAttribute('questions-per-page')) {
+      const value = parseInt(this.getAttribute('questions-per-page'), 10);
+      this.questionsPerPage = (!isNaN(value) && value > 0) ? value : 1;
+    } else {
+      this.questionsPerPage = 1; // Default
+    }
+    console.log(`AdlSurvey parseAttributes: questionsPerPage set to ${this.questionsPerPage}`);
+
+    // --- Z-Index ---
+    if (this.hasAttribute('z-index')) {
+      const zValue = this.getAttribute('z-index');
+      // Basic check if it looks like a number, otherwise use default
+      this.zIndex = !isNaN(parseInt(zValue, 10)) ? zValue : 9999;
+    } else {
+      this.zIndex = 9999; // Default if attribute not present
+    }
+    console.log(`AdlSurvey parseAttributes: zIndex set to ${this.zIndex}`);
+
+    // --- Position ---
+    const validPositions = ['left', 'center', 'right'];
+    if (this.hasAttribute('position')) {
+      const posValue = this.getAttribute('position').toLowerCase();
+      // Use the value if valid, otherwise default to 'center'
+      this.position = validPositions.includes(posValue) ? posValue : 'center';
+    } else {
+      this.position = 'center'; // Default if attribute not present
+    }
+    console.log(`AdlSurvey parseAttributes: position set to ${this.position}`);
+
+    // Note: 'theme' attribute is handled by CSS selector :host([theme="modal"])
+    // Color attributes are handled by parseColorAttributes
   }
 
   // --- Initialization Logic ---
@@ -326,89 +401,6 @@ class AdlSurvey extends HTMLElement {
     }
   }
 
-  parseAttributes = () => {
-    // --- Questions Per Page ---
-    if (this.hasAttribute('questions-per-page')) {
-      const value = parseInt(this.getAttribute('questions-per-page'), 10);
-      this.questionsPerPage = (!isNaN(value) && value > 0) ? value : 1;
-    } else {
-      this.questionsPerPage = 1; // Default
-    }
-    console.log(`AdlSurvey parseAttributes: questionsPerPage set to ${this.questionsPerPage}`);
-
-    // --- Z-Index ---
-    if (this.hasAttribute('z-index')) {
-      const zValue = this.getAttribute('z-index');
-      // Basic check if it looks like a number, otherwise use default
-      this.zIndex = !isNaN(parseInt(zValue, 10)) ? zValue : 9999;
-    } else {
-      this.zIndex = 9999; // Default if attribute not present
-    }
-    console.log(`AdlSurvey parseAttributes: zIndex set to ${this.zIndex}`);
-
-    // --- Position ---
-    const validPositions = ['left', 'center', 'right'];
-    if (this.hasAttribute('position')) {
-      const posValue = this.getAttribute('position').toLowerCase();
-      // Use the value if valid, otherwise default to 'center'
-      this.position = validPositions.includes(posValue) ? posValue : 'center';
-    } else {
-      this.position = 'center'; // Default if attribute not present
-    }
-    console.log(`AdlSurvey parseAttributes: position set to ${this.position}`);
-
-    // Note: 'theme' attribute is handled by CSS selector :host([theme="modal"])
-    // Color attributes are handled by parseColorAttributes
-  }
-
-  applyStyles = () => { // Renaming to applyStyles might be more accurate now
-    if (!this.colors) {
-      console.log("AdlSurvey applyStyles: Skipping, no colors object found.");
-      return;
-    }
-    // Also ensure zIndex has been parsed (should be handled by initial parseAttributes)
-    console.log(`AdlSurvey applyStyles: Applying styles. Colors: ${JSON.stringify(this.colors)}, Z-Index: ${this.zIndex}`);
-
-    const colors = this.colors;
-    // Generate the CSS string including the z-index variable
-    const dynamicStyles = /* CSS */`
-        :host {
-          /* Color Variables */
-          --adl-survey-color: ${colors.color};
-          --adl-survey-background-color: ${colors.backgroundColor};
-          --adl-survey-button-color: ${colors.buttonColor};
-          --adl-survey-button-background-color: ${colors.buttonBackgroundColor};
-          --adl-survey-question-button-color: ${colors.buttonQuestionColor};
-          --adl-survey-question-button-background-color: ${colors.buttonQuestionBackgroundColor};
-          --adl-survey-question-button-border-color: ${colors.buttonQuestionBorderColor};
-          --adl-survey-progress-track-color: ${colors.progressBarTrackColor};
-          --adl-survey-progress-bar-color: ${colors.progressBarColor};
-
-          /* Z-Index Variable */
-          --adl-survey-z-index: ${this.zIndex};
-        }
-      `;
-    console.log("AdlSurvey applyStyles: Generated CSS:", dynamicStyles);
-
-    // Update or add the stylesheet (same logic as before)
-    // Maybe give this stylesheet a more specific purpose if you have multiple dynamic ones
-    const styleSheetKey = 'dynamic-styles'; // Give it a conceptual key
-    let sheet = this.shadowRoot.adoptedStyleSheets.find(s => s[styleSheetKey]);
-
-    if (sheet) {
-      console.log("AdlSurvey applyStyles: Replacing existing dynamic stylesheet.");
-      sheet.replaceSync(dynamicStyles);
-    } else {
-      console.log("AdlSurvey applyStyles: Adding new dynamic stylesheet.");
-      sheet = new CSSStyleSheet();
-      sheet[styleSheetKey] = true; // Mark the sheet
-      sheet.replaceSync(dynamicStyles);
-      // Add this new sheet to the array of adopted sheets
-      this.shadowRoot.adoptedStyleSheets = [...this.shadowRoot.adoptedStyleSheets, sheet];
-    }
-    console.log("AdlSurvey applyStyles: Stylesheet updated/added.");
-  }
-
   // --- Core Rendering Function ---
   render = () => {
     console.log("AdlSurvey render: Starting render process.");
@@ -424,35 +416,20 @@ class AdlSurvey extends HTMLElement {
       if (questionId) {
         this.questionMap[questionId] = question;
       } else {
-        console.warn("AdlSurvey render: LikertScale in original HTML missing 'question-id'.", question);
+        console.warn("AdlSurvey render: Question in original HTML missing 'question-id'.", question);
       }
     });
 
     // --- Attach Listeners ---
     this.attachActionListeners(); // Attaches to buttons based on action attribute
-    const nextBtn = this.shadowRoot.querySelector('.btn-next');
-    if (nextBtn) {
-      // Ensure listener isn't added multiple times if render is called again (though clearing innerHTML helps)
-      // Consider removing listener before adding if issues arise, but usually okay with full render.
-      nextBtn.addEventListener('click', this.goToNextPage);
-    } else {
-      console.warn("AdlSurvey render: '.btn-next' not found in footer.");
-    }
-    console.log("AdlSurvey render: Attached listeners to shadow DOM buttons (if found).");
 
     // --- Initialize Visibility & State ---
-    this.updateButtonVisibility(); // <<< Now crucial to hide the irrelevant action button
     this.updateQuestionVisibility();
     this.updateNextButtonState();
 
     console.log("AdlSurvey render: Render process complete.");
   }
 
-
-
-  // --- Event Handlers ---
-  // Renamed from handleEvent to be more specific
-  // Optional: Rename this.data for clarity
   handleEvent = (event) => {
     if (event.type === "adl-survey:question" && event.detail) {
       console.log(`AdlSurvey handleEvent: Received answer for ${event.detail.questionId}`, event.detail);
@@ -461,9 +438,6 @@ class AdlSurvey extends HTMLElement {
     }
   }
 
-  // --- Navigation and State Updates ---
-
-  // Use arrow function or ensure boundGoToNextPage is used in listener
   goToNextPage = () => {
     console.log("AdlSurvey goToNextPage: Clicked. Completed:", this.isSurveyCompleted);
 
@@ -710,26 +684,28 @@ class AdlSurvey extends HTMLElement {
 
   // --- Helper to Sync Attribute ---
   updateCollapsedAttribute() {
-    console.log(this.isPopupCollapsed);
     if (this.isPopupCollapsed) {
       this.setAttribute('collapsed', ''); // Set boolean attribute
     } else {
       this.removeAttribute('collapsed');
     }
-    // Optional: Dispatch an event when state changes
-    // this.dispatchEvent(new CustomEvent('adl-survey:toggled', { detail: { collapsed: this.isPopupCollapsed } }));
   }
 
-  // --- Helper to Attach Listeners based on 'action' attribute ---
   attachActionListeners = () => {
+    const nextBtn = this.shadowRoot.querySelector('.btn-next');
     const closeBtn = this.shadowRoot.querySelector('.survey-close-button');
     const collapseBtn = this.shadowRoot.querySelector('.survey-collapse-button');
 
-    // Remove potentially existing listeners before adding (safer if render logic changes)
+    // Remove potentially existing listeners before adding
+    if (nextBtn) nextBtn.removeEventListener('click', this.goToNextPage);
     if (closeBtn) closeBtn.removeEventListener('click', this.closeSurvey);
     if (collapseBtn) collapseBtn.removeEventListener('click', this.togglePopupCollapse);
 
     // Add listeners
+    if (nextBtn) {
+      nextBtn.addEventListener('click', this.goToNextPage);
+      console.log("AdlSurvey attachActionListeners: Attached goToNextPage to", nextBtn);
+    }
     if (closeBtn) {
       closeBtn.addEventListener('click', this.closeSurvey);
       console.log("AdlSurvey attachActionListeners: Attached closeSurvey to", closeBtn);
@@ -738,25 +714,6 @@ class AdlSurvey extends HTMLElement {
       collapseBtn.addEventListener('click', this.togglePopupCollapse);
       console.log("AdlSurvey attachActionListeners: Attached togglePopupCollapse to", collapseBtn);
     }
-  }
-
-  // --- Helper to Show/Hide Correct Button based on Theme ---
-  updateButtonVisibility = () => {
-    const closeBtn = this.shadowRoot.querySelector('.survey-close-button');
-    const collapseBtn = this.shadowRoot.querySelector('.survey-collapse-button');
-    // If buttons aren't found, something is wrong with render, but add guards anyway
-    if (!closeBtn || !collapseBtn) {
-      console.warn("updateButtonVisibility: Action buttons not found in header.");
-      return;
-    }
-
-    const isPopup = this.getAttribute('theme') === 'popup';
-
-    // Hide the button that is NOT relevant for the current theme
-    closeBtn.hidden = isPopup;
-    collapseBtn.hidden = !isPopup;
-
-    console.log(`updateButtonVisibility: Popup=${isPopup}, Close Hidden=${closeBtn.hidden}, Collapse Hidden=${collapseBtn.hidden}`);
   }
 }
 
